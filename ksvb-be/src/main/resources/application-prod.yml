@@ -1,0 +1,7 @@
+# Profile prod: mọi thứ lấy từ biến môi trường (xem application.yml). Ở đây chỉ khoá những thứ không được đổi.
+ksvb:
+  security:
+    enabled: true        # bật cứng; KSVB_SECURITY_ENABLED=false + prod sẽ làm ứng dụng không khởi động
+  storage:
+    path: ${KSVB_STORAGE_PATH:/app/data/upload}
+  seed-demo: false

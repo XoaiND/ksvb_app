@@ -1,0 +1,19 @@
+bin/
+obj/
+node_modules/
+build/
+dist/
+.idea/
+.vs/
+*.user
+*.pfx
+logs/
+data/
+.env
+.env.*
+!.env.example
+~$*
+
+# cấu hình triển khai chứa thông tin nhạy cảm
+**/appsettings.Production.json
+**/appsettings.UAT.json
