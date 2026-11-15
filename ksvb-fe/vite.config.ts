@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
-    port: 5174,        // 5173 = HRM frontend dev; strictPort: bận thì báo lỗi, không tự nhảy sang cổng của app khác
+    port: 5174, // 5173 = HRM frontend dev; strictPort: bận thì báo lỗi, không tự nhảy sang cổng của app khác
     strictPort: true,
     allowedHosts: ['.ts.net'],
     proxy: { '/api': 'http://127.0.0.1:8082' },

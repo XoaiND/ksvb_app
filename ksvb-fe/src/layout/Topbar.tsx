@@ -33,8 +33,16 @@ export default function Topbar({ onMenu }: { onMenu: () => void }) {
 
   return (
     <header className="top" ref={ref}>
-      <button className="hamb" onClick={onMenu} aria-label="Menu"><Icon name="menu" size={22} /></button>
-      <button className="btn ico collapse-top" style={{ border: 0 }} onClick={toggleSidebar} aria-label="Thu gọn / mở rộng menu" title="Thu gọn / mở rộng menu  ( phím [ )">
+      <button className="hamb" onClick={onMenu} aria-label="Menu">
+        <Icon name="menu" size={22} />
+      </button>
+      <button
+        className="btn ico collapse-top"
+        style={{ border: 0 }}
+        onClick={toggleSidebar}
+        aria-label="Thu gọn / mở rộng menu"
+        title="Thu gọn / mở rộng menu  ( phím [ )"
+      >
         <Icon name="panel" size={20} />
       </button>
       <div className="gsearch rel" style={{ flex: '0 1 300px' }}>
@@ -47,37 +55,69 @@ export default function Topbar({ onMenu }: { onMenu: () => void }) {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
         />
-        <span style={{ position: 'absolute', left: 9, top: 8, color: 'var(--mut)' }}><Icon name="search" size={16} /></span>
+        <span style={{ position: 'absolute', left: 9, top: 8, color: 'var(--mut)' }}>
+          <Icon name="search" size={16} />
+        </span>
       </div>
       <div className="sp" />
       <ThemeMenu />
       <div className="rel">
-        <button className="btn ico" style={{ border: 0, position: 'relative' }} aria-label="Thông báo" onClick={() => setDd(dd === 'bell' ? null : 'bell')}>
+        <button
+          className="btn ico"
+          style={{ border: 0, position: 'relative' }}
+          aria-label="Thông báo"
+          onClick={() => setDd(dd === 'bell' ? null : 'bell')}
+        >
           <Icon name="bell" size={20} />
-          {pendingCount > 0 && <span className="badge-n" style={{ position: 'absolute', top: -2, right: -2, margin: 0 }}>{pendingCount}</span>}
+          {pendingCount > 0 && (
+            <span className="badge-n" style={{ position: 'absolute', top: -2, right: -2, margin: 0 }}>
+              {pendingCount}
+            </span>
+          )}
         </button>
         {dd === 'bell' && (
           <div className="dd" style={{ width: 320, maxWidth: '86vw' }}>
-            <div className="nt"><b>Thông báo</b></div>
+            <div className="nt">
+              <b>Thông báo</b>
+            </div>
             {pendingCount > 0 ? (
               <a onClick={() => go('/documents?tab=1')}>Có {pendingCount} tài liệu đang chờ bạn ký</a>
             ) : (
-              <div className="nt"><small>Không có việc cần xử lý</small></div>
+              <div className="nt">
+                <small>Không có việc cần xử lý</small>
+              </div>
             )}
           </div>
         )}
       </div>
       {me && (
         <div className="rel">
-          <div onClick={() => setDd(dd === 'user' ? null : 'user')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <div
+            onClick={() => setDd(dd === 'user' ? null : 'user')}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+          >
             <Avatar id={me.id} name={me.fullName} />
             <span className="gsearch">{me.fullName}</span>
           </div>
           {dd === 'user' && (
             <div className="dd">
-              <div className="nt"><b>{me.fullName}</b><small>{me.email}</small></div>
-              <a onClick={() => go('/profile')}><Icon name="user" size={16} />Thông tin cá nhân & chữ ký</a>
-              <a onClick={() => { setDd(null); logout(); }}><Icon name="logout" size={16} />Đăng xuất</a>
+              <div className="nt">
+                <b>{me.fullName}</b>
+                <small>{me.email}</small>
+              </div>
+              <a onClick={() => go('/profile')}>
+                <Icon name="user" size={16} />
+                Thông tin cá nhân & chữ ký
+              </a>
+              <a
+                onClick={() => {
+                  setDd(null);
+                  logout();
+                }}
+              >
+                <Icon name="logout" size={16} />
+                Đăng xuất
+              </a>
             </div>
           )}
         </div>

@@ -18,7 +18,9 @@ export default function Paper({ title, code, participants, meId, signMode }: Pro
         CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<small>Độc lập – Tự do – Hạnh phúc</small>
       </div>
       <h4>{title.toUpperCase()}</h4>
-      <div className="mut" style={{ textAlign: 'center', fontSize: 11 }}>Số: {code}</div>
+      <div className="mut" style={{ textAlign: 'center', fontSize: 11 }}>
+        Số: {code}
+      </div>
       <div className="ln" style={{ width: '92%' }} />
       <div className="ln" />
       <div className="ln" style={{ width: '96%' }} />
@@ -72,7 +74,9 @@ function SignBox({ p, mine }: { p: Participant; mine: boolean }) {
     <div className="sig">
       <b>{p.fullName}</b>
       <span className="mut">{p.jobTitle}</span>
-      <div className="mut" style={{ marginTop: 10 }}>{p.status === 'PENDING' ? 'Chờ ký' : 'Chưa đến lượt'}</div>
+      <div className="mut" style={{ marginTop: 10 }}>
+        {p.status === 'PENDING' ? 'Chờ ký' : 'Chưa đến lượt'}
+      </div>
     </div>
   );
 }

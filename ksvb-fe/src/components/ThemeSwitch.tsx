@@ -30,21 +30,42 @@ export function ThemeMenu() {
   const cur = THEMES.find((t) => t.key === theme) ?? THEMES[2];
   return (
     <div className="rel">
-      <button className="btn ico" style={{ border: 0 }} aria-label="Giao diện" title={`Giao diện: ${cur.label}`} onClick={() => setOpen((o) => !o)}>
+      <button
+        className="btn ico"
+        style={{ border: 0 }}
+        aria-label="Giao diện"
+        title={`Giao diện: ${cur.label}`}
+        onClick={() => setOpen((o) => !o)}
+      >
         <Icon name={cur.icon} size={20} />
       </button>
       {open && (
         <div className="dd" style={{ minWidth: 230 }}>
-          <div className="nt"><b>Giao diện</b></div>
+          <div className="nt">
+            <b>Giao diện</b>
+          </div>
           {THEMES.map((t) => (
-            <a key={t.key} onClick={() => { setTheme(t.key); setOpen(false); }}>
+            <a
+              key={t.key}
+              onClick={() => {
+                setTheme(t.key);
+                setOpen(false);
+              }}
+            >
               <Icon name={t.icon} size={16} />
               <span style={{ flex: 1 }}>{t.label}</span>
-              {theme === t.key && <span style={{ color: 'var(--pri-t)' }}><Icon name="check" size={16} /></span>}
+              {theme === t.key && (
+                <span style={{ color: 'var(--pri-t)' }}>
+                  <Icon name="check" size={16} />
+                </span>
+              )}
             </a>
           ))}
           <div className="nt" style={{ borderBottom: 0, borderTop: '1px solid var(--border)' }}>
-            <small>Đang hiển thị: {isDark ? 'tối' : 'sáng'}{theme === 'system' ? ' (theo thiết bị)' : ''}</small>
+            <small>
+              Đang hiển thị: {isDark ? 'tối' : 'sáng'}
+              {theme === 'system' ? ' (theo thiết bị)' : ''}
+            </small>
           </div>
         </div>
       )}

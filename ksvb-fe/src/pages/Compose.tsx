@@ -36,8 +36,16 @@ interface Form {
 }
 
 const EMPTY: Form = {
-  title: '', docType: DOC_TYPES[0], deadline: '', priority: 'NORMAL', description: '',
-  mode: 'SEQ', signers: [], watchers: [], message: '', shared: false,
+  title: '',
+  docType: DOC_TYPES[0],
+  deadline: '',
+  priority: 'NORMAL',
+  description: '',
+  mode: 'SEQ',
+  signers: [],
+  watchers: [],
+  message: '',
+  shared: false,
 };
 
 const ext = (name: string) => name.slice(name.lastIndexOf('.') + 1).toLowerCase();
@@ -50,7 +58,9 @@ function FileItem({ f, onRemove }: { f: FileRow; onRemove: () => void }) {
       <span className="nm">{f.name}</span>
       <span className="mut">{f.size}</span>
       <Tag color={f.file ? ['Chờ tải lên', '#FEEFCC', '#FC7F02'] : ['Đã tải lên', '#E7FBD2', '#45B223']} />
-      <button className="btn ico" onClick={onRemove} aria-label={`Bỏ ${f.name}`}><Icon name="x" size={16} /></button>
+      <button className="btn ico" onClick={onRemove} aria-label={`Bỏ ${f.name}`}>
+        <Icon name="x" size={16} />
+      </button>
     </div>
   );
 }
@@ -97,11 +107,26 @@ export default function Compose() {
           if (!live) return;
           if (!d.canEdit) return nav(`/documents/${editId}`, { replace: true });
           setForm({
-            title: d.title, docType: d.docType, deadline: d.deadline ?? '', priority: d.priority,
-            description: d.description ?? '', mode: d.mode, signers: d.participants.map((p) => p.userId),
-            watchers: d.watchers.map((w) => w.id), message: d.message ?? '', shared: d.shared,
+            title: d.title,
+            docType: d.docType,
+            deadline: d.deadline ?? '',
+            priority: d.priority,
+            description: d.description ?? '',
+            mode: d.mode,
+            signers: d.participants.map((p) => p.userId),
+            watchers: d.watchers.map((w) => w.id),
+            message: d.message ?? '',
+            shared: d.shared,
           });
-          setFiles(d.attachments.map((a) => ({ key: `a${a.id}`, name: a.name, size: fmtSize(a.sizeBytes), signable: a.signable, attachmentId: a.id })));
+          setFiles(
+            d.attachments.map((a) => ({
+              key: `a${a.id}`,
+              name: a.name,
+              size: fmtSize(a.sizeBytes),
+              signable: a.signable,
+              attachmentId: a.id,
+            })),
+          );
         } else if (templateId) {
           const t = ts.find((x) => x.id === templateId);
           if (t) {
@@ -164,7 +189,8 @@ export default function Compose() {
   const signableCount = files.filter((f) => f.signable).length;
 
   const next = () => {
-    if (step === 1 && (!form.title.trim() || signableCount === 0)) return toast('Cần nhập tiêu đề và chọn ít nhất 1 tệp PDF cần ký', true);
+    if (step === 1 && (!form.title.trim() || signableCount === 0))
+      return toast('Cần nhập tiêu đề và chọn ít nhất 1 tệp PDF cần ký', true);
     if (step === 2 && form.signers.length === 0) return setError('Cần ít nhất một người ký.');
     setError('');
     setStep(step + 1);
@@ -174,9 +200,16 @@ export default function Compose() {
   /** Lưu nháp lên máy chủ (tạo mới hoặc cập nhật), xoá tệp đã bỏ, tải tệp mới. Trả về id văn bản. */
   const persist = async (): Promise<number> => {
     const body: SaveSignRequestInput = {
-      title: form.title.trim(), docType: form.docType, description: form.description || undefined,
-      priority: form.priority, mode: form.mode, deadline: form.deadline || undefined,
-      message: form.message || undefined, shared: form.shared, signerIds: form.signers, watcherIds: form.watchers,
+      title: form.title.trim(),
+      docType: form.docType,
+      description: form.description || undefined,
+      priority: form.priority,
+      mode: form.mode,
+      deadline: form.deadline || undefined,
+      message: form.message || undefined,
+      shared: form.shared,
+      signerIds: form.signers,
+      watcherIds: form.watchers,
     };
     const saved = savedId.current ? await api.updateSignRequest(savedId.current, body) : await api.createSignRequest(body);
     savedId.current = saved.id; // lần lưu sau (khi lỗi giữa chừng) không tạo trùng bản nháp
@@ -234,16 +267,26 @@ export default function Compose() {
   if (loadError) return <ErrorNote error={loadError} />;
   if (loading) return <Loading />;
 
-  const row = (k: string, v: ReactNode) => <tr><td className="mut" style={{ width: 130 }}>{k}</td><td>{v}</td></tr>;
+  const row = (k: string, v: ReactNode) => (
+    <tr>
+      <td className="mut" style={{ width: 130 }}>
+        {k}
+      </td>
+      <td>{v}</td>
+    </tr>
+  );
   const names = (ids: number[], sep: string) => ids.map((id) => person(id)?.fullName ?? `#${id}`).join(sep) || '—';
 
   return (
     <>
-      <div className="pg-t"><h2>{editId ? 'Sửa bản nháp' : 'Soạn tài liệu mới'}</h2></div>
+      <div className="pg-t">
+        <h2>{editId ? 'Sửa bản nháp' : 'Soạn tài liệu mới'}</h2>
+      </div>
       <div className="steps">
         {STEPS.map((s, i) => (
           <div key={s} className={'step ' + (step === i + 1 ? 'on' : step > i + 1 ? 'done' : '')}>
-            <i>{step > i + 1 ? '✓' : i + 1}</i>{s}
+            <i>{step > i + 1 ? '✓' : i + 1}</i>
+            {s}
           </div>
         ))}
       </div>
@@ -252,13 +295,26 @@ export default function Compose() {
         <div className="grid g21">
           <div className="card">
             <div className="fld">
-              <label htmlFor="c-title">Tiêu đề <em>*</em></label>
-              <input id="c-title" type="text" maxLength={250} value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Nhập tiêu đề tài liệu" />
+              <label htmlFor="c-title">
+                Tiêu đề <em>*</em>
+              </label>
+              <input
+                id="c-title"
+                type="text"
+                maxLength={250}
+                value={form.title}
+                onChange={(e) => set('title', e.target.value)}
+                placeholder="Nhập tiêu đề tài liệu"
+              />
             </div>
             <div className="grid g3" style={{ gap: 12 }}>
               <div className="fld">
                 <label htmlFor="c-type">Loại văn bản</label>
-                <select id="c-type" value={form.docType} onChange={(e) => set('docType', e.target.value)}>{DOC_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
+                <select id="c-type" value={form.docType} onChange={(e) => set('docType', e.target.value)}>
+                  {DOC_TYPES.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
               </div>
               <div className="fld">
                 <label htmlFor="c-deadline">Hạn ký</label>
@@ -267,39 +323,91 @@ export default function Compose() {
               <div className="fld">
                 <label htmlFor="c-prio">Mức ưu tiên</label>
                 <select id="c-prio" value={form.priority} onChange={(e) => set('priority', e.target.value as Priority)}>
-                  {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
+                  {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
+                    <option key={p} value={p}>
+                      {PRIORITY_LABEL[p]}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="fld">
               <label htmlFor="c-desc">Mô tả / ghi chú</label>
-              <textarea id="c-desc" rows={3} maxLength={500} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Nội dung tóm tắt" />
+              <textarea
+                id="c-desc"
+                rows={3}
+                maxLength={500}
+                value={form.description}
+                onChange={(e) => set('description', e.target.value)}
+                placeholder="Nội dung tóm tắt"
+              />
             </div>
             <div className="fld">
-              <label>File cần ký <em>*</em></label>
-              <div className="drop" onClick={() => fileIn.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+              <label>
+                File cần ký <em>*</em>
+              </label>
+              <div
+                className="drop"
+                onClick={() => fileIn.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={onDrop}
+              >
                 <Icon name="upload" size={30} />
-                <p style={{ margin: '6px 0 2px' }}><b>Kéo thả file vào đây</b> hoặc bấm để chọn</p>
+                <p style={{ margin: '6px 0 2px' }}>
+                  <b>Kéo thả file vào đây</b> hoặc bấm để chọn
+                </p>
                 <small>Hỗ trợ PDF, tối đa 20 MB</small>
               </div>
-              <input ref={fileIn} type="file" accept=".pdf" multiple style={{ display: 'none' }} onChange={onPick(true)} data-testid="file-input" />
-              {files.filter((f) => f.signable).map((f) => <FileItem key={f.key} f={f} onRemove={() => removeFile(f)} />)}
+              <input
+                ref={fileIn}
+                type="file"
+                accept=".pdf"
+                multiple
+                style={{ display: 'none' }}
+                onChange={onPick(true)}
+                data-testid="file-input"
+              />
+              {files
+                .filter((f) => f.signable)
+                .map((f) => (
+                  <FileItem key={f.key} f={f} onRemove={() => removeFile(f)} />
+                ))}
             </div>
             <div className="fld">
               <label>File tham khảo (không ký)</label>
-              {files.filter((f) => !f.signable).map((f) => <FileItem key={f.key} f={f} onRemove={() => removeFile(f)} />)}
-              <input ref={refIn} type="file" multiple style={{ display: 'none' }} onChange={onPick(false)} data-testid="ref-input" />
-              <button className="btn sm" onClick={() => refIn.current?.click()}><Icon name="plus" size={14} />Thêm file tham khảo</button>
+              {files
+                .filter((f) => !f.signable)
+                .map((f) => (
+                  <FileItem key={f.key} f={f} onRemove={() => removeFile(f)} />
+                ))}
+              <input
+                ref={refIn}
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={onPick(false)}
+                data-testid="ref-input"
+              />
+              <button className="btn sm" onClick={() => refIn.current?.click()}>
+                <Icon name="plus" size={14} />
+                Thêm file tham khảo
+              </button>
             </div>
             {error && <div className="err">{error}</div>}
           </div>
           <div className="card">
             <h3>Gợi ý</h3>
-            <p className="mut">Chỉ file PDF được ký. Sau khi trình ký, nội dung file không thể sửa; nếu cần sửa hãy thu hồi về nháp.</p>
+            <p className="mut">
+              Chỉ file PDF được ký. Sau khi trình ký, nội dung file không thể sửa; nếu cần sửa hãy thu hồi về nháp.
+            </p>
             <div className="paper" style={{ maxWidth: 260, padding: 14 }}>
-              <div className="ph" style={{ fontSize: 9 }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+              <div className="ph" style={{ fontSize: 9 }}>
+                CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+              </div>
               <h4 style={{ fontSize: 11 }}>{form.title || 'Tiêu đề'}</h4>
-              {Array.from({ length: 9 }, (_, i) => <div className="ln" key={i} />)}
+              {Array.from({ length: 9 }, (_, i) => (
+                <div className="ln" key={i} />
+              ))}
             </div>
           </div>
         </div>
@@ -311,24 +419,45 @@ export default function Compose() {
             <div className="hd">
               <h3>Người ký</h3>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <select aria-label="Dùng danh sách mẫu" value="" onChange={(e) => e.target.value && applyTemplate(+e.target.value)}>
+                <select
+                  aria-label="Dùng danh sách mẫu"
+                  value=""
+                  onChange={(e) => e.target.value && applyTemplate(+e.target.value)}
+                >
                   <option value="">Dùng danh sách mẫu…</option>
-                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
                 </select>
-                <button className="btn pri" onClick={() => setPicker('signers')}><Icon name="plus" size={16} />Thêm người ký</button>
+                <button className="btn pri" onClick={() => setPicker('signers')}>
+                  <Icon name="plus" size={16} />
+                  Thêm người ký
+                </button>
               </div>
             </div>
             <div className="fld">
               <label>Cách ký</label>
               <div className="seg">
-                <button className={form.mode === 'SEQ' ? 'on' : ''} onClick={() => set('mode', 'SEQ')}>Tuần tự</button>
-                <button className={form.mode === 'PAR' ? 'on' : ''} onClick={() => set('mode', 'PAR')}>Song song</button>
+                <button className={form.mode === 'SEQ' ? 'on' : ''} onClick={() => set('mode', 'SEQ')}>
+                  Tuần tự
+                </button>
+                <button className={form.mode === 'PAR' ? 'on' : ''} onClick={() => set('mode', 'PAR')}>
+                  Song song
+                </button>
               </div>
               <div className="mut" style={{ fontSize: 12, marginTop: 4 }}>
-                {form.mode === 'SEQ' ? 'Người ký lần lượt theo thứ tự bên dưới, người sau chỉ ký khi người trước đã ký.' : 'Tất cả người ký nhận được yêu cầu cùng lúc.'}
+                {form.mode === 'SEQ'
+                  ? 'Người ký lần lượt theo thứ tự bên dưới, người sau chỉ ký khi người trước đã ký.'
+                  : 'Tất cả người ký nhận được yêu cầu cùng lúc.'}
               </div>
             </div>
-            {form.signers.length === 0 && <div className="empty" style={{ padding: 24 }}>Chưa có người ký. Bấm “Thêm người ký”.</div>}
+            {form.signers.length === 0 && (
+              <div className="empty" style={{ padding: 24 }}>
+                Chưa có người ký. Bấm “Thêm người ký”.
+              </div>
+            )}
             {form.signers.map((id, i) => {
               const p = person(id);
               const name = p?.fullName ?? `#${id}`;
@@ -336,32 +465,81 @@ export default function Compose() {
                 <div className="rcp" key={id}>
                   <span className="no">{form.mode === 'SEQ' ? i + 1 : '•'}</span>
                   <Avatar id={id} name={name} />
-                  <div className="who"><b>{name}</b><small>{[p?.jobTitle, p?.unitName].filter(Boolean).join(' · ')}</small></div>
+                  <div className="who">
+                    <b>{name}</b>
+                    <small>{[p?.jobTitle, p?.unitName].filter(Boolean).join(' · ')}</small>
+                  </div>
                   {form.mode === 'SEQ' && (
                     <>
-                      <button className="btn ico" title="Lên" aria-label="Lên" disabled={i === 0} onClick={() => move(i, -1)}><Icon name="up" size={16} /></button>
-                      <button className="btn ico" title="Xuống" aria-label="Xuống" disabled={i === form.signers.length - 1} onClick={() => move(i, 1)}><Icon name="down" size={16} /></button>
+                      <button className="btn ico" title="Lên" aria-label="Lên" disabled={i === 0} onClick={() => move(i, -1)}>
+                        <Icon name="up" size={16} />
+                      </button>
+                      <button
+                        className="btn ico"
+                        title="Xuống"
+                        aria-label="Xuống"
+                        disabled={i === form.signers.length - 1}
+                        onClick={() => move(i, 1)}
+                      >
+                        <Icon name="down" size={16} />
+                      </button>
                     </>
                   )}
-                  <button className="btn ico dan" aria-label={`Bỏ ${name}`} onClick={() => set('signers', form.signers.filter((x) => x !== id))}><Icon name="x" size={16} /></button>
+                  <button
+                    className="btn ico dan"
+                    aria-label={`Bỏ ${name}`}
+                    onClick={() =>
+                      set(
+                        'signers',
+                        form.signers.filter((x) => x !== id),
+                      )
+                    }
+                  >
+                    <Icon name="x" size={16} />
+                  </button>
                 </div>
               );
             })}
             {error && <div className="err">{error}</div>}
           </div>
           <div className="card">
-            <div className="hd"><h3>Người theo dõi</h3><button className="btn sm" onClick={() => setPicker('watchers')}><Icon name="plus" size={14} />Thêm</button></div>
-            <p className="mut" style={{ marginTop: 0 }}>Chỉ xem, không ký.</p>
+            <div className="hd">
+              <h3>Người theo dõi</h3>
+              <button className="btn sm" onClick={() => setPicker('watchers')}>
+                <Icon name="plus" size={14} />
+                Thêm
+              </button>
+            </div>
+            <p className="mut" style={{ marginTop: 0 }}>
+              Chỉ xem, không ký.
+            </p>
             {form.watchers.length === 0 && <span className="mut">Chưa có</span>}
             {form.watchers.map((id) => (
               <span className="chip" key={id}>
                 {person(id)?.fullName ?? `#${id}`}
-                <button aria-label={`Bỏ ${person(id)?.fullName ?? id}`} onClick={() => set('watchers', form.watchers.filter((x) => x !== id))}><Icon name="x" size={14} /></button>
+                <button
+                  aria-label={`Bỏ ${person(id)?.fullName ?? id}`}
+                  onClick={() =>
+                    set(
+                      'watchers',
+                      form.watchers.filter((x) => x !== id),
+                    )
+                  }
+                >
+                  <Icon name="x" size={14} />
+                </button>
               </span>
             ))}
             <div className="fld" style={{ marginTop: 14 }}>
               <label htmlFor="c-msg">Lời nhắn gửi người ký</label>
-              <textarea id="c-msg" rows={3} maxLength={500} value={form.message} onChange={(e) => set('message', e.target.value)} placeholder="Ví dụ: Anh chị xem giúp mục 4..." />
+              <textarea
+                id="c-msg"
+                rows={3}
+                maxLength={500}
+                value={form.message}
+                onChange={(e) => set('message', e.target.value)}
+                placeholder="Ví dụ: Anh chị xem giúp mục 4..."
+              />
             </div>
           </div>
         </div>
@@ -371,34 +549,73 @@ export default function Compose() {
         <div className="grid g12">
           <div className="card">
             <h3>Xem lại thông tin</h3>
-            <table className="tbl"><tbody>
-              {row('Tiêu đề', <b>{form.title}</b>)}
-              {row('Loại · Ưu tiên', `${form.docType} · ${PRIORITY_LABEL[form.priority]}`)}
-              {row('Hạn ký', form.deadline ? fmtDate(form.deadline) : 'Không đặt hạn')}
-              {row('File cần ký', files.filter((f) => f.signable).map((f) => f.name).join(', ') || '—')}
-              {row('Cách ký', form.mode === 'SEQ' ? 'Tuần tự' : 'Song song')}
-              {row('Luồng ký', names(form.signers, form.mode === 'SEQ' ? ' → ' : ', '))}
-              {row('Theo dõi', names(form.watchers, ', '))}
-            </tbody></table>
+            <table className="tbl">
+              <tbody>
+                {row('Tiêu đề', <b>{form.title}</b>)}
+                {row('Loại · Ưu tiên', `${form.docType} · ${PRIORITY_LABEL[form.priority]}`)}
+                {row('Hạn ký', form.deadline ? fmtDate(form.deadline) : 'Không đặt hạn')}
+                {row(
+                  'File cần ký',
+                  files
+                    .filter((f) => f.signable)
+                    .map((f) => f.name)
+                    .join(', ') || '—',
+                )}
+                {row('Cách ký', form.mode === 'SEQ' ? 'Tuần tự' : 'Song song')}
+                {row('Luồng ký', names(form.signers, form.mode === 'SEQ' ? ' → ' : ', '))}
+                {row('Theo dõi', names(form.watchers, ', '))}
+              </tbody>
+            </table>
             {error && <div className="err">{error}</div>}
           </div>
           <div className="card">
             <h3>Xem trước sơ đồ chữ ký</h3>
             <Paper
-              title={form.title} code="Dự thảo" signMode={false}
-              participants={form.signers.map((id, i) => ({ userId: id, fullName: person(id)?.fullName ?? `#${id}`, jobTitle: person(id)?.jobTitle, orderNo: i + 1, status: 'WAITING' as const }))}
+              title={form.title}
+              code="Dự thảo"
+              signMode={false}
+              participants={form.signers.map((id, i) => ({
+                userId: id,
+                fullName: person(id)?.fullName ?? `#${id}`,
+                jobTitle: person(id)?.jobTitle,
+                orderNo: i + 1,
+                status: 'WAITING' as const,
+              }))}
             />
           </div>
         </div>
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap' }}>
-        <div>{step > 1 && <button className="btn" onClick={() => { setError(''); setStep(step - 1); window.scrollTo(0, 0); }}><Icon name="back" size={16} />Quay lại</button>}</div>
+        <div>
+          {step > 1 && (
+            <button
+              className="btn"
+              onClick={() => {
+                setError('');
+                setStep(step - 1);
+                window.scrollTo(0, 0);
+              }}
+            >
+              <Icon name="back" size={16} />
+              Quay lại
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn" disabled={busy || !form.title.trim() || form.signers.length === 0} onClick={saveDraft}>Lưu nháp</button>
-          {step < 3
-            ? <button className="btn pri" onClick={next}>Tiếp theo →</button>
-            : <button className="btn pri" disabled={busy} onClick={() => setConfirm(true)}><Icon name="send" size={16} />Trình ký</button>}
+          <button className="btn" disabled={busy || !form.title.trim() || form.signers.length === 0} onClick={saveDraft}>
+            Lưu nháp
+          </button>
+          {step < 3 ? (
+            <button className="btn pri" onClick={next}>
+              Tiếp theo →
+            </button>
+          ) : (
+            <button className="btn pri" disabled={busy} onClick={() => setConfirm(true)}>
+              <Icon name="send" size={16} />
+              Trình ký
+            </button>
+          )}
         </div>
       </div>
 
@@ -419,12 +636,21 @@ export default function Compose() {
         <Modal
           title="Xác nhận trình ký"
           onClose={() => setConfirm(false)}
-          footer={<>
-            <button className="btn" onClick={() => setConfirm(false)}>Kiểm tra lại</button>
-            <button className="btn pri" disabled={busy} onClick={submit}><Icon name="send" size={16} />Trình ký</button>
-          </>}
+          footer={
+            <>
+              <button className="btn" onClick={() => setConfirm(false)}>
+                Kiểm tra lại
+              </button>
+              <button className="btn pri" disabled={busy} onClick={submit}>
+                <Icon name="send" size={16} />
+                Trình ký
+              </button>
+            </>
+          }
         >
-          <p>Trình ký <b>{form.title}</b> cho {form.signers.length} người ký ({form.mode === 'SEQ' ? 'tuần tự' : 'song song'})?</p>
+          <p>
+            Trình ký <b>{form.title}</b> cho {form.signers.length} người ký ({form.mode === 'SEQ' ? 'tuần tự' : 'song song'})?
+          </p>
           <p className="mut">Sau khi trình ký bạn không sửa được nội dung file.</p>
         </Modal>
       )}

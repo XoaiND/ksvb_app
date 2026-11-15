@@ -71,7 +71,8 @@ async function toError(res: Response): Promise<ApiError> {
     code = typeof body?.code === 'string' ? body.code : '';
     if (Array.isArray(body?.errors)) {
       errors = body.errors.filter(
-        (e: unknown): e is FieldError => typeof (e as FieldError)?.field === 'string' && typeof (e as FieldError)?.message === 'string',
+        (e: unknown): e is FieldError =>
+          typeof (e as FieldError)?.field === 'string' && typeof (e as FieldError)?.message === 'string',
       );
     }
   } catch {

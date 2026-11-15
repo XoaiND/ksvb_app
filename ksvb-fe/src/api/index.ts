@@ -30,7 +30,15 @@ export const api = {
 
   listSignRequests: (p: ListParams) =>
     request<PageResult<SignRequestSummary>>('GET', SR, {
-      query: { scope: p.scope, q: p.q, docType: p.docType, unit: p.unit, status: p.status, page: p.page ?? 0, size: p.size ?? 10 },
+      query: {
+        scope: p.scope,
+        q: p.q,
+        docType: p.docType,
+        unit: p.unit,
+        status: p.status,
+        page: p.page ?? 0,
+        size: p.size ?? 10,
+      },
     }),
   getSignRequest: (id: number) => request<SignRequestDetail>('GET', `${SR}/${id}`),
   createSignRequest: (b: SaveSignRequestInput) => request<SignRequestDetail>('POST', SR, { body: b }),
@@ -49,11 +57,11 @@ export const api = {
     return request<Attachment>('POST', `${SR}/${id}/attachments`, { form, query: { signable } });
   },
   removeAttachment: (id: number, attachmentId: number) => request<void>('DELETE', `${SR}/${id}/attachments/${attachmentId}`),
-  downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>) =>
-    download(`${SR}/${id}/attachments/${a.id}`, a.name),
+  downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>) => download(`${SR}/${id}/attachments/${a.id}`, a.name),
 
   templates: () => request<Template[]>('GET', '/templates'),
-  createTemplate: (b: { name: string; mode: SignMode; signerIds: number[] }) => request<Template>('POST', '/templates', { body: b }),
+  createTemplate: (b: { name: string; mode: SignMode; signerIds: number[] }) =>
+    request<Template>('POST', '/templates', { body: b }),
   useTemplate: (id: number) => request<Template>('POST', `/templates/${id}/use`),
   deleteTemplate: (id: number) => request<void>('DELETE', `/templates/${id}`),
 
@@ -61,6 +69,5 @@ export const api = {
 
   adminUsers: () => request<Person[]>('GET', '/admin/users'),
   setUserActive: (id: number, active: boolean) => request<Person>('PATCH', `/admin/users/${id}`, { body: { active } }),
-  auditLogs: (page = 0, size = 20) =>
-    request<PageResult<AuditEntry>>('GET', '/admin/audit-logs', { query: { page, size } }),
+  auditLogs: (page = 0, size = 20) => request<PageResult<AuditEntry>>('GET', '/admin/audit-logs', { query: { page, size } }),
 };

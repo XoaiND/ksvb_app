@@ -30,19 +30,31 @@ export default function AppLayout() {
     return (
       <div className="login">
         <div className="card" role="alert">
-          <div style={{ color: 'var(--bad)' }}><Icon name="ban" size={40} /></div>
+          <div style={{ color: 'var(--bad)' }}>
+            <Icon name="ban" size={40} />
+          </div>
           <h2 style={{ margin: '10px 0 4px' }}>Không vào được hệ thống</h2>
           <p className="mut">{meError}</p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            <button className="btn pri" onClick={login}>Đăng nhập lại</button>
-            <button className="btn" onClick={logout}>Đăng xuất</button>
+            <button className="btn pri" onClick={login}>
+              Đăng nhập lại
+            </button>
+            <button className="btn" onClick={logout}>
+              Đăng xuất
+            </button>
           </div>
         </div>
       </div>
     );
   }
   if (!me) {
-    return <div className="login"><div className="card"><Loading /></div></div>;
+    return (
+      <div className="login">
+        <div className="card">
+          <Loading />
+        </div>
+      </div>
+    );
   }
 
   return (

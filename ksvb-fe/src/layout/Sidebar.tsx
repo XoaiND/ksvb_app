@@ -18,7 +18,9 @@ export const NAV: NavItem[] = [
   { to: '/dashboard', title: 'Dashboard', icon: 'home' },
   { to: '/compose', title: 'Soạn tài liệu mới', icon: 'edit', needs: ['document.create'] },
   {
-    to: '/documents', title: 'Lưu trữ tài liệu', icon: 'folder',
+    to: '/documents',
+    title: 'Lưu trữ tài liệu',
+    icon: 'folder',
     subs: [
       { tab: '1', title: 'Chờ tôi duyệt', badge: true },
       { tab: '2', title: 'Tài liệu cá nhân' },
@@ -85,14 +87,24 @@ export default function Sidebar({ menuOpen, closeMenu }: Props) {
             }
             return (
               <div className="navgrp" key={n.to} onMouseEnter={placeFlyout}>
-                <a className={onDocs ? 'act' : ''} onClick={() => { setSubOpen(true); go(`${n.to}?tab=1`); }} onMouseEnter={(e) => showTip(e, n.title)}>
+                <a
+                  className={onDocs ? 'act' : ''}
+                  onClick={() => {
+                    setSubOpen(true);
+                    go(`${n.to}?tab=1`);
+                  }}
+                  onMouseEnter={(e) => showTip(e, n.title)}
+                >
                   <Icon name={n.icon} />
                   <span className="lbl">{n.title}</span>
                   <button
                     className={'chev' + (subOpen ? ' open' : '')}
                     title="Mở / đóng nhóm"
                     aria-label="Mở / đóng nhóm"
-                    onClick={(e) => { e.stopPropagation(); setSubOpen((s) => !s); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSubOpen((s) => !s);
+                    }}
                   >
                     <Icon name="down" size={16} />
                   </button>
@@ -101,7 +113,11 @@ export default function Sidebar({ menuOpen, closeMenu }: Props) {
                 <div className={'subs' + (subOpen ? '' : ' shut')}>
                   <div className="subhd">{n.title}</div>
                   {n.subs.map((s) => (
-                    <a key={s.tab} className={'sub' + (onDocs && tab === s.tab ? ' on' : '')} onClick={() => go(`${n.to}?tab=${s.tab}`)}>
+                    <a
+                      key={s.tab}
+                      className={'sub' + (onDocs && tab === s.tab ? ' on' : '')}
+                      onClick={() => go(`${n.to}?tab=${s.tab}`)}
+                    >
                       <span className="lbl">{s.title}</span>
                       {s.badge && pendingCount > 0 && <span className="badge-n">{pendingCount}</span>}
                     </a>

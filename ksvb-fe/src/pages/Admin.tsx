@@ -34,27 +34,43 @@ function UsersTab() {
   return (
     <>
       <p className="mut" style={{ marginTop: 0 }}>
-        Quyền của từng người (role.user / role.leader / role.admin) được gán trong Keycloak, client <code>ksvb-api</code>.
-        Người dùng tự xuất hiện ở đây sau lần đăng nhập đầu tiên.
+        Quyền của từng người (role.user / role.leader / role.admin) được gán trong Keycloak, client <code>ksvb-api</code>. Người
+        dùng tự xuất hiện ở đây sau lần đăng nhập đầu tiên.
       </p>
       <div className="scroll">
         <table className="tbl resp">
-          <thead><tr><th>Người dùng</th><th>Đơn vị</th><th>Email</th><th>Hoạt động</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Người dùng</th>
+              <th>Đơn vị</th>
+              <th>Email</th>
+              <th>Hoạt động</th>
+            </tr>
+          </thead>
           <tbody>
             {data.map((p) => (
               <tr key={p.id}>
                 <td className="nolbl">
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <Avatar id={p.id} name={p.fullName} />
-                    <div><b>{p.fullName}</b><div className="mut" style={{ fontSize: 12 }}>{p.jobTitle}</div></div>
+                    <div>
+                      <b>{p.fullName}</b>
+                      <div className="mut" style={{ fontSize: 12 }}>
+                        {p.jobTitle}
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td data-l="Đơn vị">{p.unitName}</td>
                 <td data-l="Email">{p.email}</td>
                 <td data-l="Hoạt động">
                   <button
-                    type="button" role="switch" aria-checked={p.active} aria-label={`Hoạt động: ${p.fullName}`}
-                    className={'sw' + (p.active ? ' on' : '')} disabled={p.id === me?.id}
+                    type="button"
+                    role="switch"
+                    aria-checked={p.active}
+                    aria-label={`Hoạt động: ${p.fullName}`}
+                    className={'sw' + (p.active ? ' on' : '')}
+                    disabled={p.id === me?.id}
                     onClick={() => toggle(p.id, !p.active)}
                   />
                 </td>
@@ -76,7 +92,15 @@ function AuditTab() {
     <>
       <div className="scroll">
         <table className="tbl resp">
-          <thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Hành động</th><th>Đối tượng</th><th>Chi tiết</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Người thực hiện</th>
+              <th>Hành động</th>
+              <th>Đối tượng</th>
+              <th>Chi tiết</th>
+            </tr>
+          </thead>
           <tbody>
             {data.content.map((a) => (
               <tr key={a.id}>
@@ -92,9 +116,13 @@ function AuditTab() {
       </div>
       <div className="pager">
         <span>{data.totalElements} bản ghi</span>
-        <b aria-label="Trang trước" onClick={() => page > 0 && setPage(page - 1)}>‹</b>
+        <b aria-label="Trang trước" onClick={() => page > 0 && setPage(page - 1)}>
+          ‹
+        </b>
         <b className="on">{page + 1}</b>
-        <b aria-label="Trang sau" onClick={() => page + 1 < data.totalPages && setPage(page + 1)}>›</b>
+        <b aria-label="Trang sau" onClick={() => page + 1 < data.totalPages && setPage(page + 1)}>
+          ›
+        </b>
       </div>
     </>
   );
@@ -126,10 +154,16 @@ export default function Admin() {
 
   return (
     <>
-      <div className="pg-t"><h2>Quản trị</h2></div>
+      <div className="pg-t">
+        <h2>Quản trị</h2>
+      </div>
       <div className="card">
         <div className="tabs">
-          {visible.map(([k, t]) => <button key={k} className={current === k ? 'on' : ''} onClick={() => setTab(k)}>{t}</button>)}
+          {visible.map(([k, t]) => (
+            <button key={k} className={current === k ? 'on' : ''} onClick={() => setTab(k)}>
+              {t}
+            </button>
+          ))}
         </div>
         {current === 'users' && <UsersTab />}
         {current === 'audit' && <AuditTab />}

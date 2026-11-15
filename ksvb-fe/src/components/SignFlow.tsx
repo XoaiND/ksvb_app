@@ -10,7 +10,10 @@ export function FlowList({ doc }: { doc: SignRequestDetail }) {
         <div className="flowi" key={p.userId}>
           <Avatar id={p.userId} name={p.fullName} />
           <div className="who">
-            <b>{doc.mode === 'SEQ' ? `${p.orderNo}. ` : ''}{p.fullName}</b>
+            <b>
+              {doc.mode === 'SEQ' ? `${p.orderNo}. ` : ''}
+              {p.fullName}
+            </b>
             <small>{[p.jobTitle, p.unitName].filter(Boolean).join(' · ')}</small>
             {p.signedAt && <small>{fmtDateTime(p.signedAt)}</small>}
             {p.status === 'REJECTED' && p.note && <small style={{ color: 'var(--bad)' }}>Lý do: {p.note}</small>}
@@ -29,10 +32,12 @@ export function Timeline({ doc }: { doc: SignRequestDetail }) {
   if (doc.submittedAt) ev.push([`${doc.creator.fullName} đã trình ký`, '', fmtDateTime(doc.submittedAt)]);
   doc.participants.forEach((p) => {
     if (p.status === 'SIGNED') ev.push([`${p.fullName} đã ký`, 'ok', fmtDateTime(p.signedAt)]);
-    if (p.status === 'REJECTED') ev.push([`${p.fullName} đã từ chối`, 'bad', fmtDateTime(p.signedAt) + (p.note ? ` — “${p.note}”` : '')]);
+    if (p.status === 'REJECTED')
+      ev.push([`${p.fullName} đã từ chối`, 'bad', fmtDateTime(p.signedAt) + (p.note ? ` — “${p.note}”` : '')]);
   });
   if (doc.status === 'COMPLETED') ev.push(['Tài liệu hoàn thành', 'ok', fmtDateTime(doc.completedAt)]);
-  if (doc.status === 'CANCELLED') ev.push(['Người tạo đã huỷ tài liệu', 'bad', doc.cancellationReason ? `Lý do: ${doc.cancellationReason}` : '']);
+  if (doc.status === 'CANCELLED')
+    ev.push(['Người tạo đã huỷ tài liệu', 'bad', doc.cancellationReason ? `Lý do: ${doc.cancellationReason}` : '']);
   if (doc.status === 'EXPIRED') ev.push(['Tài liệu quá hạn ký', 'bad', fmtDate(doc.deadline)]);
   return (
     <ul className="tl">

@@ -15,7 +15,9 @@ export default function Login() {
           <Icon name="shield" size={44} />
         </div>
         <h2 style={{ margin: '10px 0 4px' }}>Ký số văn bản</h2>
-        <p className="mut" style={{ margin: '0 0 22px' }}>Soạn, trình ký và theo dõi văn bản điện tử</p>
+        <p className="mut" style={{ margin: '0 0 22px' }}>
+          Soạn, trình ký và theo dõi văn bản điện tử
+        </p>
         <button
           className="btn pri"
           style={{ width: '100%', justifyContent: 'center', height: 40 }}

@@ -15,7 +15,11 @@ export function ErrorNote({ error, onRetry }: { error: Error; onRetry?: () => vo
     <div className="card empty" role="alert">
       <Icon name="ban" size={36} />
       <p>{error.message}</p>
-      {onRetry && <button className="btn" onClick={onRetry}>Thử lại</button>}
+      {onRetry && (
+        <button className="btn" onClick={onRetry}>
+          Thử lại
+        </button>
+      )}
     </div>
   );
 }

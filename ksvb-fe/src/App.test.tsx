@@ -17,8 +17,15 @@ function renderAt(path: string) {
 }
 
 const dashboard = {
-  pendingForMe: 1, inProgress: 3, completed: 5, rejectedOrCancelled: 1, mine: 4, shared: 2, expired: 0,
-  year: 2026, completedByMonth: [0, 1, 2, 0, 0, 0, 0, 0, 0, 3, 0, 0],
+  pendingForMe: 1,
+  inProgress: 3,
+  completed: 5,
+  rejectedOrCancelled: 1,
+  mine: 4,
+  shared: 2,
+  expired: 0,
+  year: 2026,
+  completedByMonth: [0, 1, 2, 0, 0, 0, 0, 0, 0, 3, 0, 0],
   todo: [summary(5, 'Tờ trình ngân sách quý IV', { canSign: true })],
 };
 
@@ -87,7 +94,9 @@ describe('Danh sách tài liệu', () => {
     expect(await screen.findByText('Tờ trình ngân sách quý IV')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Tài liệu cá nhân/ }));
     expect(await screen.findByText('Báo giá XYZ')).toBeInTheDocument();
-    const scopes = calls.filter((c) => c.path === '/sign-requests' && c.query.get('size') === '10').map((c) => c.query.get('scope'));
+    const scopes = calls
+      .filter((c) => c.path === '/sign-requests' && c.query.get('size') === '10')
+      .map((c) => c.query.get('scope'));
     expect(scopes).toContain('pending');
     expect(scopes).toContain('mine');
   });
@@ -138,7 +147,9 @@ describe('Ký và từ chối', () => {
     await userEvent.type(screen.getByLabelText(/Ghi chú/), 'đồng ý');
     await userEvent.click(screen.getByLabelText(/Tôi đã đọc/));
     await userEvent.click(screen.getByRole('button', { name: /Xác nhận ký/ }));
-    await waitFor(() => expect(calls.find((c) => c.method === 'POST' && c.path === '/sign-requests/5/sign')?.body).toEqual({ note: 'đồng ý' }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'POST' && c.path === '/sign-requests/5/sign')?.body).toEqual({ note: 'đồng ý' }),
+    );
     expect(await screen.findByText('Đã ký văn bản thành công')).toBeInTheDocument();
   });
 
@@ -199,7 +210,13 @@ describe('Soạn tài liệu', () => {
     const { calls } = installFetch({
       ...baseRoutes(),
       'POST /sign-requests': () => detail(30, 'Hợp đồng thử', { status: 'DRAFT', attachments: [], canSign: false }),
-      'POST /sign-requests/:id/attachments': () => ({ id: 51, name: 'hd.pdf', sizeBytes: 5, signable: true, uploadedAt: '2026-10-31T10:00:00' }),
+      'POST /sign-requests/:id/attachments': () => ({
+        id: 51,
+        name: 'hd.pdf',
+        sizeBytes: 5,
+        signable: true,
+        uploadedAt: '2026-10-31T10:00:00',
+      }),
       'POST /sign-requests/:id/submit': () => detail(30, 'Hợp đồng thử'),
       'GET /sign-requests/:id': () => detail(30, 'Hợp đồng thử'),
     });
@@ -227,7 +244,10 @@ describe('Soạn tài liệu', () => {
     const order = calls.filter((c) => c.method === 'POST').map((c) => c.path);
     expect(order.indexOf('/sign-requests')).toBeLessThan(order.indexOf('/sign-requests/30/attachments'));
     expect(order.indexOf('/sign-requests/30/attachments')).toBeLessThan(order.indexOf('/sign-requests/30/submit'));
-    const created = calls.find((c) => c.method === 'POST' && c.path === '/sign-requests')!.body as { signerIds: number[]; title: string };
+    const created = calls.find((c) => c.method === 'POST' && c.path === '/sign-requests')!.body as {
+      signerIds: number[];
+      title: string;
+    };
     expect(created.signerIds).toEqual([1]);
     expect(created.title).toBe('Hợp đồng thử');
   });
@@ -245,8 +265,13 @@ describe('Báo cáo và quản trị', () => {
     installFetch({
       ...baseRoutes(lead),
       'GET /reports/summary': () => ({
-        total: 141, completed: 100, overdue: 4, onTimeRate: 92.5, avgSignHours: 43.2,
-        byUnit: { 'Phòng Kinh doanh': 42 }, slowestSigners: [{ fullName: 'Lê Quang Cường', avgWaitHours: 62.4, overdue: 2 }],
+        total: 141,
+        completed: 100,
+        overdue: 4,
+        onTimeRate: 92.5,
+        avgSignHours: 43.2,
+        byUnit: { 'Phòng Kinh doanh': 42 },
+        slowestSigners: [{ fullName: 'Lê Quang Cường', avgWaitHours: 62.4, overdue: 2 }],
       }),
     });
     renderAt('/reports');
@@ -256,7 +281,10 @@ describe('Báo cáo và quản trị', () => {
   });
 
   it('trang quản trị: chỉ hiện tab đúng quyền', async () => {
-    installFetch({ ...baseRoutes({ ...ME, permissions: ['audit.view'] }), 'GET /admin/audit-logs': () => ({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }) });
+    installFetch({
+      ...baseRoutes({ ...ME, permissions: ['audit.view'] }),
+      'GET /admin/audit-logs': () => ({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    });
     renderAt('/admin');
     expect(await screen.findByRole('button', { name: 'Nhật ký' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Người dùng' })).not.toBeInTheDocument();
