@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import { ThemeMenu } from '../components/ThemeSwitch';

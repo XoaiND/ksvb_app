@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import { api, type SignRequestDetail } from '../api';
 import { ErrorNote, Loading } from '../components/Async';
 import Icon from '../components/Icon';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError, type Person, type Priority, type SaveSignRequestInput, type SignMode, type Template } from '../api';
 import Avatar from '../components/Avatar';
 import { ErrorNote, Loading } from '../components/Async';

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { api } from '../api';
 import { ErrorNote, Loading } from '../components/Async';
 import Icon from '../components/Icon';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router';
 import Icon from '../components/Icon';
 import { Loading } from '../components/Async';
 import { login, logout } from '../auth';

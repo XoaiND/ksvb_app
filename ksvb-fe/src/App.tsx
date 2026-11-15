@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router';
 import Toasts from './components/Toasts';
 import AppLayout from './layout/AppLayout';
 import Admin from './pages/Admin';

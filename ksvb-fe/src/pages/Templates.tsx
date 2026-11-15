@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { api, type SignMode } from '../api';
 import Avatar from '../components/Avatar';
 import { ErrorNote, Loading } from '../components/Async';

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import Icon from '../components/Icon';
 import { ThemeSeg } from '../components/ThemeSwitch';
 import { authDisabled, login } from '../auth';
