@@ -24,10 +24,10 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import vn.vbi.ksvb.domain.Permissions;
-import vn.vbi.ksvb.repo.UserRepository;
-import vn.vbi.ksvb.security.DevUserFilter;
-import vn.vbi.ksvb.security.ProblemSecurityHandlers;
+import vn.vbi.ksvb.shared.security.DevUserFilter;
+import vn.vbi.ksvb.shared.security.Permissions;
+import vn.vbi.ksvb.shared.security.ProblemSecurityHandlers;
+import vn.vbi.ksvb.user.infra.UserRepository;
 
 /**
  * Giống HRM: xác thực bằng JWT Keycloak, quyền lấy từ resource_access.{roleClient}.roles và giữ nguyên tên
