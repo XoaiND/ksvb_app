@@ -87,6 +87,15 @@ ksvb:
 management:
   # metrics/threaddump cần quyền system.monitor (xem SecurityConfig); health mở cho giám sát
   endpoints.web.exposure.include: ${ACTUATOR_ENDPOINTS:health,info,metrics,threaddump}
+  endpoint:
+    health:
+      # /actuator/health/liveness (tiến trình còn sống) và /actuator/health/readiness (sẵn sàng nhận request, có DB)
+      probes.enabled: true
+      group.readiness.include: readinessState,db
 
+# Swagger UI /swagger-ui.html + spec /v3/api-docs. Bật ở dev; profile prod mặc định TẮT (application-prod.yml).
 springdoc:
-  swagger-ui.path: /swagger-ui.html
+  api-docs.enabled: ${KSVB_API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${KSVB_API_DOCS_ENABLED:true}
+    path: /swagger-ui.html

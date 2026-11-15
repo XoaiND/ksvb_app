@@ -5,3 +5,8 @@ ksvb:
   storage:
     path: ${KSVB_STORAGE_PATH:/app/data/upload}
   seed-demo: false
+
+# Swagger/OpenAPI tắt ở prod (ECOSYSTEM.md 12.5); chỉ bật khi thật cần: KSVB_API_DOCS_ENABLED=true
+springdoc:
+  api-docs.enabled: ${KSVB_API_DOCS_ENABLED:false}
+  swagger-ui.enabled: ${KSVB_API_DOCS_ENABLED:false}
