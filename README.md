@@ -3,7 +3,7 @@
 Soạn, trình ký nhiều cấp và theo dõi văn bản điện tử. Thuộc hệ sinh thái cùng HRM (`../hrm_app`): dùng chung Keycloak (realm `dev`) để đăng nhập/phân quyền và một PostgreSQL (DB riêng `ksvb`). Người dùng, đơn vị, chức danh lấy từ token Keycloak (nguồn gốc là HRM), KSVB không tự quản lý.
 
 - **ksvb-be/**: Java 25, Spring Boot 4.1, Spring Data JPA (Hibernate 7), Flyway, Spring Security (JWT Keycloak), cổng **8082**
-- **ksvb-fe/**: React 18 + TypeScript, Vite, react-router, keycloak-js, CSS tự viết (sáng/tối), cổng dev **5174**, docker **3001**
+- **ksvb-fe/**: React 19 + TypeScript, Vite, react-router 7, Ant Design 6, TanStack Query, keycloak-js, theme sáng/tối/theo hệ thống, kiểu API sinh từ OpenAPI (`npm run gen:api`), cổng dev **5174**, docker **3001**
 
 ## Tài liệu (`docs/`)
 
@@ -51,6 +51,8 @@ docker compose up -d --build   # frontend: http://localhost:3001, backend: http:
 
 - Backend: `./mvnw test` (JUnit 5, MockMvc; **cần Docker** vì test chạy trên PostgreSQL thật bằng Testcontainers; gồm cả chế độ JWT với token giả). Định dạng: `./mvnw spotless:apply`.
 - Frontend: `npm test` (Vitest, backend giả lập ở `src/test/fakeBackend.ts`), `npm run build`, `npm run lint`, `npm run format`.
+- Kiểu TypeScript của API: sinh từ OpenAPI, không viết tay. Đổi DTO ở backend → `cd ksvb-be && ./mvnw test` (xuất `target/openapi/ksvb-api.json`) → `cd ksvb-fe && npm run gen:api`.
+- Bản preview giao diện `docs/design/index.html` (một file, mở thẳng bằng trình duyệt, dữ liệu mẫu): `cd ksvb-fe && npm run build:design`.
 - CI: GitHub Actions `.github/workflows/ci.yml` chạy tất cả các bước trên mỗi push/PR; Dependabot nhắc cập nhật dependency.
 
 ## API (tiền tố `/api`)
