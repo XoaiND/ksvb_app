@@ -54,7 +54,7 @@ public class DashboardService {
                 .forEach(r -> byMonth.set(r.getCompletedAt().getMonthValue() - 1,
                         byMonth.get(r.getCompletedAt().getMonthValue() - 1) + 1));
 
-        List<SignRequestSummary> todo = signRequests.search(me, "pending", null, null, null, null, 0, 5).getContent();
+        List<SignRequestSummary> todo = signRequests.search(me, "pending", null, null, null, null, 0, 5).content();
         return new DashboardDto(pending, inProgress, completed, bad, mine, shared, expired, year, byMonth, todo);
     }
 

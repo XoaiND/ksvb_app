@@ -19,6 +19,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vbi.ksvb.common.BusinessException;
+import vn.vbi.ksvb.common.PageResponse;
 import vn.vbi.ksvb.domain.AppUser;
 import vn.vbi.ksvb.domain.DocCounter;
 import vn.vbi.ksvb.domain.DocStatus;
@@ -61,14 +62,14 @@ public class SignRequestService {
     // ------------------------------------------------------------------ truy vấn
 
     @Transactional(readOnly = true)
-    public Page<SignRequestSummary> search(AppUser me, String scope, String q, String docType, String unit,
+    public PageResponse<SignRequestSummary> search(AppUser me, String scope, String q, String docType, String unit,
                                            DocStatus status, int page, int size) {
         Scope s = parseScope(scope);
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), PageResponse.MAX_SIZE),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         Specification<SignRequest> spec = SignRequestSpecs.scope(s, me.getId())
                 .and(SignRequestSpecs.filter(q, docType, unit, status));
-        return requests.findAll(spec, pageable).map(r -> toSummary(r, me));
+        return PageResponse.of(requests.findAll(spec, pageable).map(r -> toSummary(r, me)));
     }
 
     @Transactional(readOnly = true)
@@ -235,7 +236,7 @@ public class SignRequestService {
         for (Long id : ids) {
             AppUser u = byId.get(id);
             if (u == null || !u.isActive()) {
-                throw BusinessException.badRequest("Không tìm thấy " + what + " có id " + id);
+                throw BusinessException.invalid("Không tìm thấy " + what + " có id " + id);
             }
             out.add(u);
         }
@@ -246,7 +247,7 @@ public class SignRequestService {
         try {
             return Scope.valueOf(s == null ? "PENDING" : s.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw BusinessException.badRequest("scope phải là pending, mine, shared hoặc watching");
+            throw BusinessException.invalid("scope phải là pending, mine, shared hoặc watching");
         }
     }
 

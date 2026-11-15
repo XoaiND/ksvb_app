@@ -43,13 +43,17 @@ class SignRequestApiTest {
     void danhSachChoToiKy_cuaNguoiDung4_cu2VanBan() throws Exception {
         mvc.perform(get("/api/sign-requests").param("scope", "pending").header("X-User-Id", 4))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page.totalElements").value(2));
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     @Test
     void scopeKhongHopLe_tra400() throws Exception {
         mvc.perform(get("/api/sign-requests").param("scope", "abc").header("X-User-Id", 4))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
@@ -57,7 +61,8 @@ class SignRequestApiTest {
         JsonNode list = call(as(4, get("/api/sign-requests").param("scope", "mine")));
         long id = list.get("content").get(0).get("id").asLong();
         // người 10 không tham gia, không theo dõi, văn bản không chung
-        mvc.perform(get("/api/sign-requests/" + id).header("X-User-Id", 10)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/sign-requests/" + id).header("X-User-Id", 10)).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
@@ -71,13 +76,15 @@ class SignRequestApiTest {
 
         // chưa có tệp PDF → không trình ký được
         mvc.perform(post("/api/sign-requests/" + id + "/submit").header("X-User-Id", 4))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BUSINESS_RULE"));
 
         // tệp giả đuôi pdf nhưng nội dung không phải PDF → bị từ chối
         mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
                         .file(new MockMultipartFile("file", "gia.pdf", "application/pdf", "khong phai pdf".getBytes()))
                         .header("X-User-Id", 4))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
 
         mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
                         .file(new MockMultipartFile("file", "hd.pdf", "application/pdf", "%PDF-1.4 demo".getBytes()))
@@ -91,7 +98,8 @@ class SignRequestApiTest {
                 .andExpect(jsonPath("$.code").isNotEmpty());
 
         // người 2 chưa đến lượt
-        mvc.perform(post("/api/sign-requests/" + id + "/sign").header("X-User-Id", 2)).andExpect(status().isConflict());
+        mvc.perform(post("/api/sign-requests/" + id + "/sign").header("X-User-Id", 2)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
         // người ngoài luồng
         mvc.perform(post("/api/sign-requests/" + id + "/sign").header("X-User-Id", 9)).andExpect(status().isForbidden());
 
@@ -129,7 +137,8 @@ class SignRequestApiTest {
         mvc.perform(post("/api/sign-requests").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"\",\"docType\":\"Hợp đồng\",\"signerIds\":[1]}").header("X-User-Id", 4))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.title").exists());
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[?(@.field == 'title')].message").exists());
     }
 
     @Test

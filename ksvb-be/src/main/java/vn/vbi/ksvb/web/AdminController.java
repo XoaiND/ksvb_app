@@ -1,7 +1,6 @@
 package vn.vbi.ksvb.web;
 
 import java.util.List;
-import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import vn.vbi.ksvb.common.PageResponse;
 import vn.vbi.ksvb.security.CurrentUser;
 import vn.vbi.ksvb.service.AdminService;
 import vn.vbi.ksvb.web.Dtos.AuditDto;
@@ -43,7 +43,7 @@ public class AdminController {
 
     @GetMapping("/audit-logs")
     @PreAuthorize("hasAuthority('audit.view')")
-    public Page<AuditDto> auditLogs(@RequestParam(defaultValue = "0") int page,
+    public PageResponse<AuditDto> auditLogs(@RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "20") int size) {
         return service.auditLogs(page, size);
     }

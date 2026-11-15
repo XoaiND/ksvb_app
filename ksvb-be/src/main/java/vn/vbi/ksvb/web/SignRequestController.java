@@ -3,7 +3,6 @@ package vn.vbi.ksvb.web;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.core.io.Resource;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vbi.ksvb.domain.DocStatus;
+import vn.vbi.ksvb.common.PageResponse;
 import vn.vbi.ksvb.security.CurrentUser;
 import vn.vbi.ksvb.service.AttachmentService;
 import vn.vbi.ksvb.service.SignRequestService;
@@ -52,7 +52,7 @@ public class SignRequestController {
 
     /** scope = pending (chờ tôi ký) | mine (tôi tạo) | shared (tài liệu chung) | watching (tôi theo dõi). */
     @GetMapping
-    public Page<SignRequestSummary> list(@RequestParam(defaultValue = "pending") String scope,
+    public PageResponse<SignRequestSummary> list(@RequestParam(defaultValue = "pending") String scope,
                                          @RequestParam(required = false) String q,
                                          @RequestParam(required = false) String docType,
                                          @RequestParam(required = false) String unit,

@@ -42,7 +42,9 @@ class JwtModeApiTest {
 
     @Test
     void khongCoToken_tra401() throws Exception {
-        mvc.perform(get("/api/me")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/me")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.detail").isNotEmpty());
         mvc.perform(get("/api/sign-requests")).andExpect(status().isUnauthorized());
     }
 
@@ -75,7 +77,8 @@ class JwtModeApiTest {
         // đăng nhập được nhưng không có role nào của ksvb-api
         mvc.perform(post("/api/sign-requests").contentType(MediaType.APPLICATION_JSON).content(body)
                         .with(token("khong.quyen@congty.vn")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
         // chỉ có quyền ký, không có quyền soạn
         mvc.perform(post("/api/sign-requests").contentType(MediaType.APPLICATION_JSON).content(body)
                         .with(token("chi.ky@congty.vn", "document.sign")))
@@ -98,7 +101,10 @@ class JwtModeApiTest {
     @Test
     void actuatorHealthMo_cacEndpointKhacCanQuyen() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+        mvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk());
+        mvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
         mvc.perform(get("/actuator/info").with(token("a@congty.vn", "document.create")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 }

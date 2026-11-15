@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vbi.ksvb.common.BusinessException;
+import vn.vbi.ksvb.common.PageResponse;
 import vn.vbi.ksvb.domain.AppUser;
 import vn.vbi.ksvb.domain.AuditLog;
 import vn.vbi.ksvb.repo.AuditLogRepository;
@@ -48,14 +49,14 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditDto> auditLogs(int page, int size) {
-        Page<AuditLog> p = audits.findAll(PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+    public PageResponse<AuditDto> auditLogs(int page, int size) {
+        Page<AuditLog> p = audits.findAll(PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), PageResponse.MAX_SIZE),
                 Sort.by(Sort.Direction.DESC, "occurredAt")));
         Map<Long, String> names = users.findAllById(
                 p.getContent().stream().map(AuditLog::getActorId).filter(java.util.Objects::nonNull).distinct().toList())
                 .stream().collect(Collectors.toMap(AppUser::getId, AppUser::getFullName, (a, b) -> a));
-        return p.map(a -> new AuditDto(a.getId(), a.getOccurredAt(),
+        return PageResponse.of(p.map(a -> new AuditDto(a.getId(), a.getOccurredAt(),
                 a.getActorId() == null ? "Hệ thống" : names.getOrDefault(a.getActorId(), "#" + a.getActorId()),
-                a.getAction(), a.getTarget(), a.getDetail()));
+                a.getAction(), a.getTarget(), a.getDetail())));
     }
 }
