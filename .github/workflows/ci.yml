@@ -1,0 +1,60 @@
+# CI chuẩn hệ sinh thái (ECOSYSTEM.md 12.4): build + test BE, build + lint + test FE, kiểm lỗ hổng dependency.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: ksvb-be (Java 25)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ksvb-be
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Định dạng (Spotless)
+        run: ./mvnw -B -ntp spotless:check
+      # Test tích hợp dùng Testcontainers PostgreSQL: runner ubuntu có sẵn Docker.
+      - name: Build + test
+        run: ./mvnw -B -ntp verify
+
+  frontend:
+    name: ksvb-fe
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ksvb-fe
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ksvb-fe/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Định dạng (Prettier)
+        run: npm run format:check
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm test
+      # Chỉ chặn với lỗ hổng mức high trở lên của dependency chạy thật; công cụ dev do Dependabot nhắc.
+      - name: Kiểm lỗ hổng (npm audit)
+        run: npm audit --omit=dev --audit-level=high
