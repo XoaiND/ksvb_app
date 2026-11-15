@@ -27,6 +27,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vn.vbi.ksvb.domain.Permissions;
 import vn.vbi.ksvb.repo.UserRepository;
 import vn.vbi.ksvb.security.DevUserFilter;
+import vn.vbi.ksvb.security.ProblemSecurityHandlers;
 
 /**
  * Giống HRM: xác thực bằng JWT Keycloak, quyền lấy từ resource_access.{roleClient}.roles và giữ nguyên tên
@@ -62,7 +63,12 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").hasAuthority(Permissions.SYSTEM_MONITOR)
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
-                .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(jwtConverter(roleClient))));
+                .exceptionHandling(e -> e.authenticationEntryPoint(ProblemSecurityHandlers.entryPoint())
+                        .accessDeniedHandler(ProblemSecurityHandlers.accessDenied()))
+                .oauth2ResourceServer(o -> o
+                        .authenticationEntryPoint(ProblemSecurityHandlers.entryPoint())
+                        .accessDeniedHandler(ProblemSecurityHandlers.accessDenied())
+                        .jwt(j -> j.jwtAuthenticationConverter(jwtConverter(roleClient))));
         return http.build();
     }
 

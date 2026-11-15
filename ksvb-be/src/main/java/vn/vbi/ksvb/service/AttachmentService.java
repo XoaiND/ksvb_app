@@ -50,13 +50,13 @@ public class AttachmentService {
             throw BusinessException.conflict("Chỉ thêm được tệp khi văn bản là bản nháp");
         }
         if (file == null || file.isEmpty()) {
-            throw BusinessException.badRequest("Tệp rỗng");
+            throw BusinessException.invalid("Tệp rỗng");
         }
 
         String original = cleanName(file.getOriginalFilename());
         String ext = extensionOf(original);
         if (!(signable ? SIGNABLE_EXT : REFERENCE_EXT).contains(ext)) {
-            throw BusinessException.badRequest(signable
+            throw BusinessException.invalid(signable
                     ? "Tệp cần ký phải là PDF"
                     : "Định dạng tệp không được hỗ trợ (PDF, DOC(X), XLS(X), PNG, ZIP, RAR)");
         }
@@ -66,11 +66,11 @@ public class AttachmentService {
             Files.createDirectories(baseDir);
             Path target = baseDir.resolve(stored).normalize();
             if (!target.startsWith(baseDir)) {
-                throw BusinessException.badRequest("Tên tệp không hợp lệ");
+                throw BusinessException.invalid("Tên tệp không hợp lệ");
             }
             try (InputStream in = file.getInputStream()) {
                 if (ext.equals("pdf") && !looksLikePdf(in)) {
-                    throw BusinessException.badRequest("Nội dung tệp không phải PDF hợp lệ");
+                    throw BusinessException.invalid("Nội dung tệp không phải PDF hợp lệ");
                 }
             }
             try (InputStream in = file.getInputStream()) {
