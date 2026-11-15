@@ -1,20 +1,22 @@
 {
-  "name": "ksvb-fe",
+  "name": "ksvb-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "e2e": "playwright test",
     "lint": "eslint .",
+    "gen:api": "openapi-typescript openapi/openapi.json -o src/shared/api/schema.d.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "gen:api": "openapi-typescript ../ksvb-be/target/openapi/ksvb-api.json -o src/shared/api/schema.d.ts",
-    "gen:api:live": "openapi-typescript http://127.0.0.1:8082/v3/api-docs -o src/shared/api/schema.d.ts",
-    "build:design": "vite build --config vite.design.config.ts",
-    "e2e": "playwright test"
+    "build:design": "vite build --config vite.design.config.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",

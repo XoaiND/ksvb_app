@@ -10,7 +10,8 @@ export interface FieldError {
 
 /**
  * Lỗi từ backend (RFC 7807, ECOSYSTEM.md 12.2): `message` là `detail` tiếng Việt, `code` là mã ổn định
- * (`VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `BUSINESS_RULE`, `UNAUTHORIZED`, `INTERNAL_ERROR`),
+ * (`VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `BUSINESS_RULE`, `INTERNAL_ERROR`), `reason` là mã
+ * nghiệp vụ chi tiết (vd. `UNAUTHENTICATED`, `CONCURRENT_UPDATE`; có thể rỗng),
  * `errors` là lỗi theo từng trường (rỗng nếu không phải lỗi kiểm tra dữ liệu).
  */
 export class ApiError extends Error {

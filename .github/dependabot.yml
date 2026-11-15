@@ -1,21 +1,30 @@
-# Nhắc cập nhật dependency/lỗ hổng (ECOSYSTEM.md 12.4). Bật "Dependabot alerts" trong Settings của repo GitHub.
+# Cập nhật và cảnh báo lỗ hổng dependency (ECOSYSTEM.md 12.4). Cần bật "Dependabot alerts" trong Settings của repo.
 version: 2
 updates:
   - package-ecosystem: maven
-    directory: /ksvb-be
-    schedule: { interval: weekly }
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
   - package-ecosystem: npm
-    directory: /ksvb-fe
-    schedule: { interval: weekly }
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
     groups:
-      dev-tools:
-        dependency-type: development
+      antd:
+        patterns: ["antd", "@ant-design/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
   - package-ecosystem: docker
-    directory: /ksvb-be
-    schedule: { interval: monthly }
+    directory: /backend
+    schedule:
+      interval: monthly
   - package-ecosystem: docker
-    directory: /ksvb-fe
-    schedule: { interval: monthly }
+    directory: /frontend
+    schedule:
+      interval: monthly
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: monthly }
+    schedule:
+      interval: monthly

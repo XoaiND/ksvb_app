@@ -1,5 +1,5 @@
 /**
- * Kiểu dữ liệu API lấy từ `schema.d.ts` (sinh bằng `npm run gen:api` từ `/v3/api-docs` của ksvb-be, ECOSYSTEM.md 12.3).
+ * Kiểu dữ liệu API lấy từ `schema.d.ts` (sinh bằng `npm run gen:api` từ `openapi/openapi.json` = đặc tả `/v3/api-docs` do backend xuất bằng `OpenApiExportTest`, ECOSYSTEM.md 12.3).
  * KHÔNG viết tay cho khớp DTO Java: đổi DTO ở BE thì chạy lại `gen:api`.
  */
 import type { components } from './schema';

@@ -1,6 +1,6 @@
 /**
  * Backend giả trong bộ nhớ cho bản preview `docs/design/index.html` (npm run build:design): thay `fetch` để giao diện
- * thật chạy được khi mở file trực tiếp, không cần ksvb-be. Luật nghiệp vụ chỉ mô phỏng đủ để bấm thử; luật thật ở BE.
+ * thật chạy được khi mở file trực tiếp, không cần backend. Luật nghiệp vụ chỉ mô phỏng đủ để bấm thử; luật thật ở BE.
  */
 import type {
   AuditEntry,
@@ -354,8 +354,8 @@ function route(method: string, path: string, q: URLSearchParams, body: unknown, 
     const note = (body as { note?: string } | undefined)?.note;
     switch (r[2]) {
       case 'submit':
-        if (!d.participants.length) throw new Problem(400, 'BUSINESS_RULE', 'Cần ít nhất một người ký');
-        if (!d.attachments.some((a) => a.signable)) throw new Problem(400, 'BUSINESS_RULE', 'Cần ít nhất một tệp PDF cần ký');
+        if (!d.participants.length) throw new Problem(422, 'BUSINESS_RULE', 'Cần ít nhất một người ký');
+        if (!d.attachments.some((a) => a.signable)) throw new Problem(422, 'BUSINESS_RULE', 'Cần ít nhất một tệp PDF cần ký');
         d.code = d.code ?? `${'HD'}-2026-${String(++counter).padStart(4, '0')}`;
         d.submittedAt = now();
         setStatus(d, 'PENDING');
@@ -461,21 +461,49 @@ function route(method: string, path: string, q: URLSearchParams, body: unknown, 
   throw new Problem(404, 'NOT_FOUND', `Bản preview chưa giả lập ${method} ${path}`);
 }
 
+const INITIAL = JSON.stringify({ people: PEOPLE, docs: DOCS, templates: TEMPLATES });
+
+/** Đưa dữ liệu mẫu về ban đầu (bản preview khi mở trang, E2E trước mỗi kịch bản). */
+export function resetDemoData() {
+  const s = JSON.parse(INITIAL) as { people: Person[]; docs: SignRequestDetail[]; templates: Template[] };
+  PEOPLE.splice(0, PEOPLE.length, ...s.people);
+  DOCS.splice(0, DOCS.length, ...s.docs);
+  TEMPLATES.splice(0, TEMPLATES.length, ...s.templates);
+  audit.splice(0, audit.length);
+  seq = 200;
+  counter = 7;
+  log('CREATE', 'SignRequest#106', 'Biên bản họp giao ban tháng 10');
+}
+
+/**
+ * Xử lý một lời gọi `/api/...` (path không gồm `/api`) như ksvb-backend: trả `{status, body}`, lỗi theo RFC 7807
+ * (`code`, `detail`). Dùng cho bản preview (thay `window.fetch`) và E2E (Playwright `page.route`, e2e/mockApi.ts).
+ */
+export function handleDemoApi(
+  method: string,
+  path: string,
+  query: URLSearchParams,
+  body: unknown,
+  role: string,
+): { status: number; body?: unknown } {
+  try {
+    const out = route(method.toUpperCase(), path, query, body, role);
+    return out === undefined ? { status: 204 } : { status: 200, body: out };
+  } catch (e) {
+    const pr = e instanceof Problem ? e : new Problem(500, 'INTERNAL_ERROR', 'Lỗi hệ thống, vui lòng thử lại sau.');
+    return { status: pr.status, body: { status: pr.status, code: pr.code, detail: pr.detail } };
+  }
+}
+
 /** Thay `window.fetch` cho mọi lời gọi `/api/...`. */
 export function installDemoBackend(role: string) {
-  log('CREATE', 'SignRequest#106', 'Biên bản họp giao ban tháng 10');
+  resetDemoData();
   window.fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const u = new URL(String(input), window.location.href.startsWith('http') ? window.location.href : 'http://preview.local/');
     const path = u.pathname.replace(/^.*\/api/, '');
-    const method = (init.method ?? 'GET').toUpperCase();
     const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
     await new Promise((res) => setTimeout(res, 150));
-    try {
-      const out = route(method, path, u.searchParams, body, role);
-      return out === undefined ? new Response(null, { status: 204 }) : Response.json(out);
-    } catch (e) {
-      const pr = e instanceof Problem ? e : new Problem(500, 'INTERNAL_ERROR', 'Lỗi hệ thống, vui lòng thử lại sau.');
-      return Response.json({ status: pr.status, code: pr.code, detail: pr.detail }, { status: pr.status });
-    }
+    const r = handleDemoApi(init.method ?? 'GET', path, u.searchParams, body, role);
+    return r.body === undefined ? new Response(null, { status: r.status }) : Response.json(r.body, { status: r.status });
   };
 }
