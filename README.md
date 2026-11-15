@@ -2,7 +2,7 @@
 
 Soạn, trình ký nhiều cấp và theo dõi văn bản điện tử. Thuộc hệ sinh thái cùng HRM (`../hrm_app`): dùng chung Keycloak (realm `dev`) để đăng nhập/phân quyền và một PostgreSQL (DB riêng `ksvb`). Người dùng, đơn vị, chức danh lấy từ token Keycloak (nguồn gốc là HRM), KSVB không tự quản lý.
 
-- **ksvb-be/**: Java 21, Spring Boot 4.1, Spring Data JPA (Hibernate 7), Flyway, Spring Security (JWT Keycloak), cổng **8082**
+- **ksvb-be/**: Java 25, Spring Boot 4.1, Spring Data JPA (Hibernate 7), Flyway, Spring Security (JWT Keycloak), cổng **8082**
 - **ksvb-fe/**: React 18 + TypeScript, Vite, react-router, keycloak-js, CSS tự viết (sáng/tối), cổng dev **5174**, docker **3001**
 
 ## Tài liệu (`docs/`)
@@ -49,8 +49,9 @@ docker compose up -d --build   # frontend: http://localhost:3001, backend: http:
 
 ## Kiểm thử
 
-- Backend: `mvn test` (JUnit 5, MockMvc, H2; gồm cả chế độ JWT với token giả).
-- Frontend: `npm test` (Vitest, backend giả lập ở `src/test/fakeBackend.ts`), `npm run build`.
+- Backend: `./mvnw test` (JUnit 5, MockMvc; **cần Docker** vì test chạy trên PostgreSQL thật bằng Testcontainers; gồm cả chế độ JWT với token giả). Định dạng: `./mvnw spotless:apply`.
+- Frontend: `npm test` (Vitest, backend giả lập ở `src/test/fakeBackend.ts`), `npm run build`, `npm run lint`, `npm run format`.
+- CI: GitHub Actions `.github/workflows/ci.yml` chạy tất cả các bước trên mỗi push/PR; Dependabot nhắc cập nhật dependency.
 
 ## API (tiền tố `/api`)
 
