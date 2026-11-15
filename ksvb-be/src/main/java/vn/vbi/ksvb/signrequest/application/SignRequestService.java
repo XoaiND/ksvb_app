@@ -3,6 +3,7 @@ package vn.vbi.ksvb.signrequest.application;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vbi.ksvb.shared.audit.AuditService;
 import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.outbox.OutboxService;
 import vn.vbi.ksvb.shared.paging.PageResponse;
 import vn.vbi.ksvb.signrequest.domain.DocCounter;
 import vn.vbi.ksvb.signrequest.domain.DocStatus;
@@ -46,14 +48,16 @@ public class SignRequestService {
     private final DocCounterRepository counters;
     private final AuditService audit;
     private final NotificationService notifier;
+    private final OutboxService outbox;
 
     public SignRequestService(SignRequestRepository requests, UserRepository users, DocCounterRepository counters,
-                              AuditService audit, NotificationService notifier) {
+                              AuditService audit, NotificationService notifier, OutboxService outbox) {
         this.requests = requests;
         this.users = users;
         this.counters = counters;
         this.audit = audit;
         this.notifier = notifier;
+        this.outbox = outbox;
     }
 
     // ------------------------------------------------------------------ truy vấn
@@ -129,6 +133,7 @@ public class SignRequestService {
         LocalDateTime now = LocalDateTime.now();
         r.submit(me.getId(), r.getCode() == null ? nextCode(r.getDocType(), now.toLocalDate()) : null, now);
         audit.log(me.getId(), "SUBMIT", codeOf(r), r.getTitle());
+        event(r, SignRequestEvents.SUBMITTED, me.getId());
         safeNotify(() -> notifier.notifyTurn(r));
         return toDetail(r, me);
     }
@@ -138,6 +143,10 @@ public class SignRequestService {
         SignRequest r = find(id);
         r.sign(me.getId(), note, LocalDateTime.now());
         audit.log(me.getId(), "SIGN", codeOf(r), r.getTitle());
+        event(r, SignRequestEvents.SIGNED, me.getId());
+        if (r.getStatus() == DocStatus.COMPLETED) {
+            event(r, SignRequestEvents.COMPLETED, me.getId());
+        }
         safeNotify(() -> {
             if (r.getStatus() == DocStatus.COMPLETED) notifier.notifyStatusChanged(r);
             else notifier.notifyTurn(r);
@@ -150,6 +159,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         r.reject(me.getId(), reason, LocalDateTime.now());
         audit.log(me.getId(), "REJECT", codeOf(r), reason);
+        event(r, SignRequestEvents.REJECTED, me.getId());
         safeNotify(() -> notifier.notifyStatusChanged(r));
         return toDetail(r, me);
     }
@@ -159,6 +169,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         r.cancel(me.getId(), reason, LocalDateTime.now());
         audit.log(me.getId(), "CANCEL", codeOf(r), reason);
+        event(r, SignRequestEvents.CANCELLED, me.getId());
         safeNotify(() -> notifier.notifyStatusChanged(r));
         return toDetail(r, me);
     }
@@ -168,6 +179,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         r.recall(me.getId(), LocalDateTime.now());
         audit.log(me.getId(), "RECALL", codeOf(r), r.getTitle());
+        event(r, SignRequestEvents.RECALLED, me.getId());
         return toDetail(r, me);
     }
 
@@ -194,6 +206,7 @@ public class SignRequestService {
             if (r.expireIfOverdue(today, now)) {
                 n++;
                 audit.log(null, "EXPIRE", codeOf(r), r.getTitle());
+                event(r, SignRequestEvents.EXPIRED, null);
                 safeNotify(() -> notifier.notifyStatusChanged(r));
             }
         }
@@ -246,6 +259,19 @@ public class SignRequestService {
         } catch (IllegalArgumentException e) {
             throw BusinessException.invalid("scope phải là pending, mine, shared hoặc watching");
         }
+    }
+
+    /** Sự kiện đổi trạng thái ra outbox (cùng transaction). Payload chỉ có thông tin nhận diện, không có nội dung tệp. */
+    private void event(SignRequest r, String type, Long actorId) {
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("id", r.getId());
+        p.put("code", r.getCode());
+        p.put("title", r.getTitle());
+        p.put("docType", r.getDocType());
+        p.put("status", r.getStatus().name());
+        p.put("creatorId", r.getCreator().getId());
+        p.put("actorId", actorId);
+        outbox.publish(SignRequestEvents.AGGREGATE, r.getId(), r.getCode(), type, p);
     }
 
     private static String codeOf(SignRequest r) {

@@ -55,6 +55,6 @@ public class AdminService {
                 .stream().collect(Collectors.toMap(AppUser::getId, AppUser::getFullName, (a, b) -> a));
         return PageResponse.of(p.map(a -> new AuditDto(a.getId(), a.getOccurredAt(),
                 a.getActorId() == null ? "Hệ thống" : names.getOrDefault(a.getActorId(), "#" + a.getActorId()),
-                a.getAction(), a.getTarget(), a.getDetail())));
+                a.getAction(), a.getTarget(), a.getDetail(), a.getResult())));
     }
 }

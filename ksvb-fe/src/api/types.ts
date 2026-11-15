@@ -156,6 +156,8 @@ export interface AuditEntry {
   action: string;
   target?: string;
   detail?: string;
+  /** OK = thành công, ERROR = bị chặn/thất bại. */
+  result?: 'OK' | 'ERROR';
 }
 
 export interface ListParams {

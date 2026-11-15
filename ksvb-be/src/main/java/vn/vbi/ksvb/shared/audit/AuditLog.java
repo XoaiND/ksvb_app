@@ -32,14 +32,30 @@ public class AuditLog {
     @Column(length = 500)
     private String detail;
 
+    /** {@link #OK} hoặc {@link #ERROR} (thao tác bị chặn/thất bại). */
+    @Column(nullable = false, length = 10)
+    private String result;
+
+    public static final String OK = "OK";
+    public static final String ERROR = "ERROR";
+
     protected AuditLog() {}
 
     public AuditLog(LocalDateTime occurredAt, Long actorId, String action, String target, String detail) {
+        this(occurredAt, actorId, action, target, detail, OK);
+    }
+
+    public AuditLog(LocalDateTime occurredAt, Long actorId, String action, String target, String detail, String result) {
         this.occurredAt = occurredAt;
         this.actorId = actorId;
-        this.action = action;
-        this.target = target;
-        this.detail = detail;
+        this.action = cut(action, 60);
+        this.target = cut(target, 120);
+        this.detail = cut(detail, 500);
+        this.result = result;
+    }
+
+    private static String cut(String s, int max) {
+        return s == null || s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
     public Long getId() { return id; }
@@ -48,4 +64,5 @@ public class AuditLog {
     public String getAction() { return action; }
     public String getTarget() { return target; }
     public String getDetail() { return detail; }
+    public String getResult() { return result; }
 }

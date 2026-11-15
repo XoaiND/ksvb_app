@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vbi.ksvb.config.KsvbProperties;
+import vn.vbi.ksvb.shared.audit.AuditService;
 import vn.vbi.ksvb.shared.error.BusinessException;
 import vn.vbi.ksvb.signrequest.domain.Attachment;
 import vn.vbi.ksvb.signrequest.domain.DocStatus;
@@ -33,8 +34,11 @@ public class AttachmentService {
     private final SignRequestRepository requests;
     private final Path baseDir;
 
-    public AttachmentService(SignRequestRepository requests, KsvbProperties props) {
+    private final AuditService audit;
+
+    public AttachmentService(SignRequestRepository requests, KsvbProperties props, AuditService audit) {
         this.requests = requests;
+        this.audit = audit;
         this.baseDir = Path.of(props.storage().path()).toAbsolutePath().normalize();
     }
 
@@ -81,6 +85,7 @@ public class AttachmentService {
 
         Attachment a = r.addAttachment(original, stored, file.getSize(), signable, LocalDateTime.now());
         requests.saveAndFlush(r);
+        audit.log(me.getId(), "ATTACH", "SignRequest#" + r.getId(), original + (signable ? " (cần ký)" : ""));
         return AttachmentDto.of(a);
     }
 
@@ -111,6 +116,7 @@ public class AttachmentService {
             throw BusinessException.forbidden("Chỉ người tạo mới được xoá tệp");
         }
         r.removeAttachment(attachmentId);
+        audit.log(me.getId(), "DETACH", "SignRequest#" + r.getId(), "Attachment#" + attachmentId);
     }
 
     private static boolean looksLikePdf(InputStream in) throws IOException {

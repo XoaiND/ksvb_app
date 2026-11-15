@@ -1,5 +1,6 @@
 package vn.vbi.ksvb.shared.error;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import vn.vbi.ksvb.shared.audit.BlockedActionAuditor;
 
 /**
  * Chuẩn hoá lỗi theo RFC 7807 (ProblemDetail) + quy ước ECOSYSTEM.md 12.2: luôn có {@code code} ({@link ErrorCode}),
@@ -28,6 +30,12 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    private final BlockedActionAuditor blocked;
+
+    public ApiExceptionHandler(BlockedActionAuditor blocked) {
+        this.blocked = blocked;
+    }
 
     /** Một lỗi kiểm tra dữ liệu của một trường. */
     public record FieldError(String field, String message) {
@@ -40,12 +48,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    ProblemDetail business(BusinessException e) {
+    ProblemDetail business(BusinessException e, HttpServletRequest req) {
+        if (!ErrorCode.VALIDATION_ERROR.equals(e.getCode())) {
+            blocked.record(req, e.getCode(), e.getMessage());
+        }
         return problem(HttpStatus.valueOf(e.getStatus()), e.getCode(), e.getMessage());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)
-    ProblemDetail conflict(OptimisticLockingFailureException e) {
+    ProblemDetail conflict(OptimisticLockingFailureException e, HttpServletRequest req) {
+        blocked.record(req, ErrorCode.CONFLICT, "Khoá lạc quan: dữ liệu đã bị người khác cập nhật");
         return problem(HttpStatus.CONFLICT, ErrorCode.CONFLICT,
                 "Văn bản vừa được người khác cập nhật. Vui lòng tải lại và thử lại.");
     }
@@ -58,7 +70,8 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     /** {@code @PreAuthorize} từ chối (người đã đăng nhập nhưng thiếu quyền). */
     @ExceptionHandler(AccessDeniedException.class)
-    ProblemDetail denied(AccessDeniedException e) {
+    ProblemDetail denied(AccessDeniedException e, HttpServletRequest req) {
+        blocked.record(req, ErrorCode.FORBIDDEN, "Thiếu quyền");
         return problem(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này.");
     }
 

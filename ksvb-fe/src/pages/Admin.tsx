@@ -99,6 +99,7 @@ function AuditTab() {
               <th>Hành động</th>
               <th>Đối tượng</th>
               <th>Chi tiết</th>
+              <th>Kết quả</th>
             </tr>
           </thead>
           <tbody>
@@ -109,6 +110,7 @@ function AuditTab() {
                 <td data-l="Hành động">{a.action}</td>
                 <td data-l="Đối tượng">{a.target ?? '—'}</td>
                 <td data-l="Chi tiết">{a.detail ?? '—'}</td>
+                <td data-l="Kết quả">{a.result === 'ERROR' ? 'Bị chặn' : 'Thành công'}</td>
               </tr>
             ))}
           </tbody>

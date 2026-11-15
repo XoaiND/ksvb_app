@@ -7,6 +7,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.vbi.ksvb.shared.audit.AuditService;
 import vn.vbi.ksvb.shared.error.BusinessException;
 import vn.vbi.ksvb.template.domain.SignTemplate;
 import vn.vbi.ksvb.template.infra.TemplateRepository;
@@ -19,10 +20,12 @@ public class TemplateService {
 
     private final TemplateRepository templates;
     private final UserRepository users;
+    private final AuditService audit;
 
-    public TemplateService(TemplateRepository templates, UserRepository users) {
+    public TemplateService(TemplateRepository templates, UserRepository users, AuditService audit) {
         this.templates = templates;
         this.users = users;
+        this.audit = audit;
     }
 
     @Transactional(readOnly = true)
@@ -34,6 +37,7 @@ public class TemplateService {
     public TemplateDto create(AppUser me, SaveTemplate in) {
         validateSigners(in.signerIds());
         SignTemplate t = templates.save(new SignTemplate(in.name().trim(), in.mode(), me.getId(), in.signerIds()));
+        audit.log(me.getId(), "CREATE_TEMPLATE", "Template#" + t.getId(), t.getName());
         return toDto(t);
     }
 
@@ -47,7 +51,9 @@ public class TemplateService {
 
     @Transactional
     public void delete(AppUser me, Long id) {
-        templates.delete(owned(me, id));
+        SignTemplate t = owned(me, id);
+        templates.delete(t);
+        audit.log(me.getId(), "DELETE_TEMPLATE", "Template#" + id, t.getName());
     }
 
     private SignTemplate owned(AppUser me, Long id) {

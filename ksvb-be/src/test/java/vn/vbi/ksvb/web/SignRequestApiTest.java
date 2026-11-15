@@ -100,6 +100,10 @@ class SignRequestApiTest {
         // người 2 chưa đến lượt
         mvc.perform(post("/api/sign-requests/" + id + "/sign").header("X-User-Id", 2)).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
+        // thao tác bị chặn vẫn có trong nhật ký (result=ERROR, transaction riêng)
+        mvc.perform(get("/api/admin/audit-logs").param("size", "100").header("X-User-Id", 11))
+                .andExpect(jsonPath("$.content[?(@.action == 'BLOCKED' && @.target == 'POST /api/sign-requests/" + id
+                        + "/sign' && @.result == 'ERROR')]").exists());
         // người ngoài luồng
         mvc.perform(post("/api/sign-requests/" + id + "/sign").header("X-User-Id", 9)).andExpect(status().isForbidden());
 
