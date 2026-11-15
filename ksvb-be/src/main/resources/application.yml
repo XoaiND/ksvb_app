@@ -12,6 +12,10 @@ server:
       enabled: true                                  # cần để có metric tomcat.threads.*
 
 spring:
+  config:
+    # Bí mật (KSVB_DB_PASSWORD) KHÔNG ghi ở đây: lấy từ biến môi trường, hoặc file ksvb-be/.env khi chạy trên máy
+    # (không commit, mẫu ở ksvb-be/.env.example).
+    import: optional:file:.env[.properties]
   application:
     name: ksvb-be
   threads:
@@ -23,7 +27,7 @@ spring:
   datasource:
     url: ${KSVB_DB_URL:jdbc:postgresql://localhost:5432/ksvb}
     username: ${KSVB_DB_USER:ksvb_app}
-    password: ${KSVB_DB_PASSWORD:Doan9499}
+    password: ${KSVB_DB_PASSWORD}
     hikari:
       pool-name: ksvb-db-pool
       # Tổng (số instance x maximum-pool-size) phải nhỏ hơn max_connections của PostgreSQL (mặc định 100)
@@ -56,7 +60,7 @@ spring:
       resourceserver:
         jwt:
           # issuer-uri phải khớp claim "iss" của token (địa chỉ trình duyệt dùng, vd. http://localhost:8080/realms/dev).
-          issuer-uri: ${KSVB_OIDC_ISSUER_URI:http://localhost:8080/realms/dev}
+          issuer-uri: ${KSVB_OIDC_ISSUER_URI:https://sso.xoaind.io.vn/realms/dev}
           # Trong Docker "localhost" không tới được Keycloak → đặt biến môi trường (KHÔNG khai báo ở đây, vì giá trị
           # rỗng làm Spring tạo bộ giải mã sai):
           #   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dev/protocol/openid-connect/certs

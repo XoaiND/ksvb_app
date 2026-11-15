@@ -3,7 +3,7 @@
 # CHƯA chạy thử trên Keycloak thật — xem kết quả từng bước và sửa nếu phiên bản Keycloak khác cú pháp.
 #
 # Chạy từ máy có Docker (mật khẩu truyền bằng biến, không ghi vào file):
-#   docker exec -i -e KC_ADMIN_USER -e KC_ADMIN_PASSWORD -e WEB_URLS keycloak bash -s < keycloak/setup-ksvb.sh
+#   docker exec -i -e KC_ADMIN_USER -e KC_ADMIN_PASSWORD -e WEB_URLS keycloak bash -s < docs/keycloak/setup-ksvb.sh
 # Tuỳ chọn: REALM (mặc định dev), KC_SERVER (mặc định http://localhost:8080 — địa chỉ TRONG container),
 #           WEB_URLS (redirect URI của giao diện, cách nhau dấu phẩy; mặc định gồm cổng dev 5174 và cổng Docker 3001 của KSVB; 5173/3000 là của HRM).
 set -euo pipefail

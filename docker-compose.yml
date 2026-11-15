@@ -11,7 +11,7 @@ services:
       KSVB_DB_URL: ${KSVB_DB_URL:?đặt KSVB_DB_URL trong .env}
       KSVB_DB_USER: ${KSVB_DB_USER:-ksvb_app}
       KSVB_DB_PASSWORD: ${KSVB_DB_PASSWORD:?đặt KSVB_DB_PASSWORD trong .env}
-      # vd. http://localhost:8080/realms/dev  (phải khớp claim iss của token)
+      # vd. https://sso.xoaind.io.vn/realms/dev  (phải khớp claim iss của token)
       KSVB_OIDC_ISSUER_URI: ${KSVB_OIDC_ISSUER_URI:?đặt KSVB_OIDC_ISSUER_URI trong .env}
       # địa chỉ NỘI BỘ của Keycloak để tải khoá công khai, vd. http://keycloak:8080/realms/dev/protocol/openid-connect/certs
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${KSVB_OIDC_JWK_SET_URI:?đặt KSVB_OIDC_JWK_SET_URI trong .env}
@@ -29,7 +29,7 @@ services:
     build:
       context: ./ksvb-fe
       args:
-        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://localhost:8080}
+        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-https://sso.xoaind.io.vn}
         VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-dev}
         VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-ksvb-web}
     container_name: ksvb-fe

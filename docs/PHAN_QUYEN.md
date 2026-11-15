@@ -1,4 +1,6 @@
-# Phân quyền KSVB (đề xuất — chờ người dùng chốt)
+# Phân quyền KSVB
+
+Theo code hiện tại: `ksvb-be/.../domain/Permissions.java` và `docs/keycloak/setup-ksvb.sh` (tạo đúng các quyền, role dưới đây).
 
 Quyền chi tiết = client role của client `ksvb-api` trong Keycloak (realm `dev`), kiểm bằng `@PreAuthorize("hasAuthority('...')")`
 (cách HRM đang làm). Role tổng hợp là composite role bên Keycloak; backend không kiểm tên role tổng hợp.
@@ -28,10 +30,9 @@ dashboard cá nhân, mẫu người nhận của mình, hồ sơ và chữ ký.
 | `report.view` | | ✔ | ✔ |
 | `user.manage`, `audit.view`, `config.manage`, `cert.manage`, `system.monitor` | | | ✔ |
 
-Tuỳ chọn: `role.clerk` (văn thư) = `role.user` + `document.view.all`.
 
-## Cần chốt
-- Danh sách quyền / role có đúng không, có cần `role.clerk` không.
-- Người đăng nhập nhưng chưa có role KSVB: chặn hẳn (403) hay cho xem phần cơ bản.
-- Đã cài đặt trong ksvb-be: quyền lấy từ client role `ksvb-api` trong token (`@PreAuthorize`); cột `role` của `app_user`
-  chỉ dùng ở chế độ dev (`ksvb.security.enabled=false`). Tạo client/role bằng `keycloak/setup-ksvb.sh`.
+## Hiện trạng
+- Quyền lấy từ client role `ksvb-api` trong token (`@PreAuthorize`); cột `role` của `app_user` chỉ dùng ở chế độ dev (`ksvb.security.enabled=false`).
+- Người đăng nhập nhưng chưa có quyền KSVB: vào được, thấy văn bản liên quan tới mình (tạo, ký, theo dõi, tài liệu chung), không soạn / ký.
+- `role.clerk` (văn thư = `role.user` + `document.view.all`) chưa tạo; muốn có thì thêm vào `setup-ksvb.sh` và Keycloak, backend không cần sửa.
+- `config.manage`, `cert.manage`: đã có quyền và tab Quản trị, backend chưa có chức năng.

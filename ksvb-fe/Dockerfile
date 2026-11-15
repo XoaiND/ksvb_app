@@ -4,7 +4,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 # Địa chỉ Keycloak là địa chỉ TRÌNH DUYỆT truy cập (không phải tên container). Nhúng vào bản build.
-ARG VITE_KEYCLOAK_URL=http://localhost:8080
+ARG VITE_KEYCLOAK_URL=https://sso.xoaind.io.vn
 ARG VITE_KEYCLOAK_REALM=dev
 ARG VITE_KEYCLOAK_CLIENT_ID=ksvb-web
 ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL \
