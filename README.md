@@ -54,6 +54,12 @@ docker compose up -d --build   # frontend: http://localhost:3001, backend: http:
 - Kiểu TypeScript của API: sinh từ OpenAPI, không viết tay. Đổi DTO ở backend → `cd ksvb-be && ./mvnw test` (xuất `target/openapi/ksvb-api.json`) → `cd ksvb-fe && npm run gen:api`.
 - Bản preview giao diện `docs/design/index.html` (một file, mở thẳng bằng trình duyệt, dữ liệu mẫu): `cd ksvb-fe && npm run build:design`.
 - CI: GitHub Actions `.github/workflows/ci.yml` chạy tất cả các bước trên mỗi push/PR; Dependabot nhắc cập nhật dependency.
+- E2E: `cd ksvb-fe && npx playwright install chromium && npm run e2e` (tự chạy backend profile `h2` và frontend dev; cần JDK 25).
+
+## Vận hành
+- Log JSON (ECS) ở profile `prod`, có `traceId`; OpenTelemetry gửi ra collector khi `KSVB_OTLP_ENABLED=true` (`KSVB_OTLP_TRACES_ENDPOINT`).
+- `/actuator/health/liveness`, `/actuator/health/readiness` (mở), `/actuator/metrics|prometheus|threaddump` (cần `system.monitor`).
+- Image Docker chạy bằng user không phải root và có `HEALTHCHECK`.
 
 ## API (tiền tố `/api`)
 
