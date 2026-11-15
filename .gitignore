@@ -1,12 +1,31 @@
-node_modules/
-build/
-dist/
-.idea/
-*.pfx
-logs/
-data/
+# Bien moi truong (chi commit file .env.example)
 .env
 .env.*
 !.env.example
-~$*
 
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Build / dependency
+node_modules/
+dist/
+target/
+bin/
+obj/
+*.tsbuildinfo
+
+# He dieu hanh
+.DS_Store
+Thumbs.db
+
+# Playwright
+test-results/
+playwright-report/
+
+# Riêng KSVB: tệp tải lên khi chạy cục bộ, chứng thư số
+data/
+logs/
+*.pfx
+~$*

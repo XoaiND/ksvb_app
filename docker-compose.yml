@@ -1,48 +1,44 @@
+# Chạy chung network với Postgres, Keycloak hiện có (local-network); file này không tự có Postgres/Keycloak.
 # Chạy: docker compose up -d --build   (cổng 3001 và 8082 phải trống; chạy được cùng lúc với HRM: 3000/8081)
-# Postgres và Keycloak KHÔNG nằm trong file này: dùng bản đang chạy trên máy dev, qua network ngoài
-# "local-network" (giống HRM). Biến môi trường đặt trong file .env cạnh file này, không commit.
+# nginx trong frontend đã proxy /api -> ksvb-backend:8082, nên backend không cần public.
 services:
-  ksvb-be:
-    build:
-      context: ./ksvb-be
-    container_name: ksvb-be
+  ksvb-backend:
+    build: ./backend
+    container_name: ksvb-backend
     environment:
-      # vd. jdbc:postgresql://<tên container postgres>:5432/ksvb
-      KSVB_DB_URL: ${KSVB_DB_URL:?đặt KSVB_DB_URL trong .env}
-      KSVB_DB_USER: ${KSVB_DB_USER:-ksvb_app}
-      KSVB_DB_PASSWORD: ${KSVB_DB_PASSWORD:?đặt KSVB_DB_PASSWORD trong .env}
-      # vd. https://sso.xoaind.io.vn/realms/dev  (phải khớp claim iss của token)
-      KSVB_OIDC_ISSUER_URI: ${KSVB_OIDC_ISSUER_URI:?đặt KSVB_OIDC_ISSUER_URI trong .env}
-      # địa chỉ NỘI BỘ của Keycloak để tải khoá công khai, vd. http://keycloak:8080/realms/dev/protocol/openid-connect/certs
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${KSVB_OIDC_JWK_SET_URI:?đặt KSVB_OIDC_JWK_SET_URI trong .env}
-      SPRING_PROFILES_ACTIVE: prod
-      KSVB_CORS_ORIGINS: ${KSVB_CORS_ORIGINS:-http://localhost:3001}
+      SPRING_PROFILES_ACTIVE: prod   # tắt Swagger/OpenAPI; bật lại bằng KSVB_API_DOCS_ENABLED=true
+      KSVB_DB_URL: jdbc:postgresql://postgres:5432/ksvb
+      KSVB_DB_USER: ksvb_app
+      # Bí mật lấy từ file .env cạnh file này (không commit, mẫu: .env.example)
+      KSVB_DB_PASSWORD: ${KSVB_DB_PASSWORD:?Thiếu KSVB_DB_PASSWORD trong .env}
+      # issuer phải trùng với "iss" trong token = URL public của Keycloak (KC_HOSTNAME)
+      KSVB_KEYCLOAK_ISSUER: ${KSVB_KEYCLOAK_PUBLIC_URL:-https://sso.xoaind.io.vn}/realms/dev
+      # Lấy khoá công khai qua mạng nội bộ (không vòng ra Internet)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/dev/protocol/openid-connect/certs
+      KSVB_CORS_ORIGINS: ${KSVB_PUBLIC_URL:-http://localhost:3001},http://localhost:3001,http://localhost:5174
     volumes:
       - ./data/upload:/app/data/upload
     ports:
-      - "8082:8082"
-    networks:
-      - local-network
+      - "8082:8082" # chỉ để debug local
     restart: unless-stopped
 
-  ksvb-fe:
+  ksvb-frontend:
     build:
-      context: ./ksvb-fe
+      context: ./frontend
       args:
-        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-https://sso.xoaind.io.vn}
-        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-dev}
-        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-ksvb-web}
-    container_name: ksvb-fe
-    depends_on:
-      ksvb-be:
-        condition: service_healthy
+        # Trình duyệt gọi trực tiếp -> phải là URL public
+        VITE_KEYCLOAK_URL: ${KSVB_KEYCLOAK_PUBLIC_URL:-https://sso.xoaind.io.vn}
+        VITE_KEYCLOAK_REALM: dev
+        VITE_KEYCLOAK_CLIENT_ID: ksvb-web
+    container_name: ksvb-frontend
     ports:
-      - "3001:8080"   # 3000 = HRM frontend docker; nginx trong container nghe 8080 (không chạy root)
-    networks:
-      - local-network
+      - "3001:8080" # 3000 = HRM frontend; nginx trong container không chạy root, nghe 8080
+    depends_on:
+      ksvb-backend:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
-  local-network:
+  default:
     name: local-network
     external: true
