@@ -34,9 +34,10 @@ services:
         VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-ksvb-web}
     container_name: ksvb-fe
     depends_on:
-      - ksvb-be
+      ksvb-be:
+        condition: service_healthy
     ports:
-      - "3001:80"   # 3000 = HRM frontend docker
+      - "3001:8080"   # 3000 = HRM frontend docker; nginx trong container nghe 8080 (không chạy root)
     networks:
       - local-network
     restart: unless-stopped
