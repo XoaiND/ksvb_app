@@ -19,5 +19,6 @@ export default defineConfig({
     globals: true,
     env: { VITE_AUTH_DISABLED: 'true' }, // test không qua Keycloak
     setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'], // e2e/ do Playwright chạy (npm run e2e)
   },
 });

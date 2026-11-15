@@ -13,7 +13,8 @@
     "format:check": "prettier --check .",
     "gen:api": "openapi-typescript ../ksvb-be/target/openapi/ksvb-api.json -o src/shared/api/schema.d.ts",
     "gen:api:live": "openapi-typescript http://127.0.0.1:8082/v3/api-docs -o src/shared/api/schema.d.ts",
-    "build:design": "vite build --config vite.design.config.ts"
+    "build:design": "vite build --config vite.design.config.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.10",
