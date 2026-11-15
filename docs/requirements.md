@@ -1,6 +1,6 @@
 # Yêu cầu – KSVB (Ký số văn bản)
 
-Viết theo code hiện tại (15/11/2026): `ksvb-fe/src/pages`, `ksvb-be/.../web`, `domain`.
+Viết theo code hiện tại (15/11/2026): `ksvb-fe/src/features/*`, `ksvb-be/.../<tính năng>/{api,application,domain}`.
 
 ## Mục tiêu
 Người soạn trình văn bản (tệp PDF cần ký, kèm tệp tham khảo) qua luồng ký nhiều người, tuần tự hoặc song song. Người ký ký hoặc từ chối khi đến lượt. Mọi người theo dõi tiến độ, lưu trữ, xem báo cáo.
