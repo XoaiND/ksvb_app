@@ -6,6 +6,12 @@ ksvb:
     path: ${KSVB_STORAGE_PATH:/app/data/upload}
   seed-demo: false
 
+# Log có cấu trúc (JSON, chuẩn ECS) để gom log; có trace.id/span.id. Đổi: KSVB_LOG_FORMAT=logstash|gelf
+logging:
+  structured:
+    format.console: ${KSVB_LOG_FORMAT:ecs}
+    ecs.service.name: ksvb-be
+
 # Swagger/OpenAPI tắt ở prod (ECOSYSTEM.md 12.5); chỉ bật khi thật cần: KSVB_API_DOCS_ENABLED=true
 springdoc:
   api-docs.enabled: ${KSVB_API_DOCS_ENABLED:false}

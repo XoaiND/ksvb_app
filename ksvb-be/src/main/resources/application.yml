@@ -86,12 +86,24 @@ ksvb:
 
 management:
   # metrics/threaddump cần quyền system.monitor (xem SecurityConfig); health mở cho giám sát
-  endpoints.web.exposure.include: ${ACTUATOR_ENDPOINTS:health,info,metrics,threaddump}
+  endpoints.web.exposure.include: ${ACTUATOR_ENDPOINTS:health,info,metrics,threaddump,prometheus}
   endpoint:
     health:
       # /actuator/health/liveness (tiến trình còn sống) và /actuator/health/readiness (sẵn sàng nhận request, có DB)
       probes.enabled: true
       group.readiness.include: readinessState,db
+  # Tracing OpenTelemetry (ECOSYSTEM.md 12.5): traceId/spanId luôn có trong log; chỉ gửi span/metric/log ra collector
+  # OTLP khi KSVB_OTLP_ENABLED=true (mặc định tắt để không gọi localhost:4318 vô ích).
+  tracing:
+    sampling.probability: ${KSVB_TRACING_SAMPLING:1.0}
+    export.otlp.enabled: ${KSVB_OTLP_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.name: ksvb-be
+    tracing.export.otlp.endpoint: ${KSVB_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+  otlp:
+    metrics.export.enabled: ${KSVB_OTLP_ENABLED:false}
+    logging.export.enabled: ${KSVB_OTLP_ENABLED:false}
 
 # Swagger UI /swagger-ui.html + spec /v3/api-docs. Bật ở dev; profile prod mặc định TẮT (application-prod.yml).
 springdoc:
