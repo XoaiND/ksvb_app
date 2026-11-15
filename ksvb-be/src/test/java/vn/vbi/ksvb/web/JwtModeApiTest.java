@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest(properties = {
         "ksvb.security.enabled=true",
-        "spring.datasource.url=jdbc:h2:mem:ksvbjwt;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1"
+        "spring.datasource.url=jdbc:tc:postgresql:17-alpine:///ksvbjwt"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** Kiểm thử toàn tuyến: Flyway + JPA + controller trên H2, người dùng lấy từ header X-User-Id. */
+/** Kiểm thử toàn tuyến: Flyway + JPA + controller trên PostgreSQL (Testcontainers), người dùng lấy từ header X-User-Id. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

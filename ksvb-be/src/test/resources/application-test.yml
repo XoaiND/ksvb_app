@@ -1,8 +1,11 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:ksvbtest;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
-    username: sa
-    password: ""
+    # PostgreSQL thật qua Testcontainers (cần Docker), không dùng H2 để kiểm SQL (ECOSYSTEM.md 12.4).
+    # Mỗi tên DB khác nhau trong URL jdbc:tc: là một container riêng → test cần dữ liệu tách biệt đặt URL riêng.
+    url: jdbc:tc:postgresql:17-alpine:///ksvbtest
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    username: test
+    password: test
   jpa:
     properties:
       hibernate:

@@ -30,7 +30,7 @@ class ApiDocsProfileTest {
     @Nested
     @SpringBootTest(properties = {
             "ksvb.storage.path=./target/test-upload",
-            "spring.datasource.url=jdbc:h2:mem:ksvbprod;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1"
+            "spring.datasource.url=jdbc:tc:postgresql:17-alpine:///ksvbprod"
     })
     @AutoConfigureMockMvc
     @ActiveProfiles({"test", "prod"})
