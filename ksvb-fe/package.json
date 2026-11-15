@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:api": "openapi-typescript ../ksvb-be/target/openapi/ksvb-api.json -o src/shared/api/schema.d.ts",
-    "gen:api:live": "openapi-typescript http://127.0.0.1:8082/v3/api-docs -o src/shared/api/schema.d.ts"
+    "gen:api:live": "openapi-typescript http://127.0.0.1:8082/v3/api-docs -o src/shared/api/schema.d.ts",
+    "build:design": "vite build --config vite.design.config.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
@@ -42,6 +43,7 @@
     "typescript": "~6.0",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
+    "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.1.0"
   },
   "overrides": {
