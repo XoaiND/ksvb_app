@@ -69,7 +69,21 @@ docker compose up -d --build   # frontend: http://localhost:3001, backend: http:
 | GET / PATCH | `/admin/users`, `/admin/users/{id}` | `user.manage` |
 | GET | `/admin/audit-logs` | `audit.view` |
 
-Lỗi trả về dạng ProblemDetail (RFC 7807), thông điệp tiếng Việt: 400 dữ liệu sai, 403 không có quyền, 404 không tồn tại, 409 sai trạng thái / xung đột.
+Danh sách phân trang trả `PageResponse` chung của hệ sinh thái: `{content, page, size, totalElements, totalPages}` (`page` từ 0, `size` tối đa 100).
+
+Lỗi trả về dạng ProblemDetail (RFC 7807, `application/problem+json`), `detail` tiếng Việt, luôn có `code`; lỗi kiểm tra dữ liệu có thêm `errors: [{field, message}]`:
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | dữ liệu gửi lên sai (thiếu trường, tệp không phải PDF, `scope` lạ...) |
+| 400 | `BUSINESS_RULE` | vi phạm luật nghiệp vụ (trình ký khi chưa có người ký/tệp PDF, từ chối không lý do...) |
+| 401 | `UNAUTHORIZED` | chưa đăng nhập / token hết hạn |
+| 403 | `FORBIDDEN` | thiếu quyền hoặc không liên quan đến văn bản |
+| 404 | `NOT_FOUND` | không tồn tại |
+| 409 | `CONFLICT` | sai trạng thái, chưa đến lượt ký, người khác vừa sửa (khoá lạc quan) |
+| 500 | `INTERNAL_ERROR` | lỗi hệ thống (chi tiết chỉ ghi log) |
+
+Swagger UI `/swagger-ui.html`, spec `/v3/api-docs`: bật ở dev, **tắt ở profile `prod`** (bật lại bằng `KSVB_API_DOCS_ENABLED=true`). Health: `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness` (có kiểm DB).
 
 ## Chưa có
 
