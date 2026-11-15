@@ -1,0 +1,13 @@
+/* Chỉ phần ngoài Ant Design. Màu lấy từ theme (ConfigProvider), không ghi cứng ở đây. */
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}

@@ -10,9 +10,15 @@
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "gen:api": "openapi-typescript ../ksvb-be/target/openapi/ksvb-api.json -o src/shared/api/schema.d.ts",
+    "gen:api:live": "openapi-typescript http://127.0.0.1:8082/v3/api-docs -o src/shared/api/schema.d.ts"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "@tanstack/react-query": "^5.107.1",
+    "antd": "^6.7.0",
+    "dayjs": "^1.11.23",
     "keycloak-js": "^26.2.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -31,10 +37,16 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
     "jsdom": "^31.0.1",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.10.1",
     "typescript": "~6.0",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

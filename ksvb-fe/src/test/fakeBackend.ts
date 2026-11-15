@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Me, Person, SignRequestDetail, SignRequestSummary } from '../api';
+import type { Me, Person, SignRequestDetail, SignRequestSummary } from '../shared/api/types';
 
 export interface Call {
   method: string;
