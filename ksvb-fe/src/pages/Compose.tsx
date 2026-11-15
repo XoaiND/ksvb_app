@@ -192,8 +192,8 @@ export default function Compose() {
 
   const fail = (e: unknown) => {
     setConfirm(false);
-    if (e instanceof ApiError && e.errors) {
-      setError(Object.values(e.errors).join('; '));
+    if (e instanceof ApiError && e.errors.length > 0) {
+      setError(e.errors.map((x) => x.message).join('; '));
       toast('Dữ liệu chưa hợp lệ', true);
     } else {
       toast(errorText(e), true);

@@ -105,7 +105,7 @@ describe('Danh sách tài liệu', () => {
     const mine = summary(8, 'Hợp đồng đang chờ', { creator: PEOPLE[3] });
     const { calls } = installFetch({
       ...baseRoutes(),
-      'GET /sign-requests': () => ({ content: [mine], page: { size: 10, number: 0, totalElements: 1, totalPages: 1 } }),
+      'GET /sign-requests': () => ({ content: [mine], page: 0, size: 10, totalElements: 1, totalPages: 1 }),
       'POST /sign-requests/:id/cancel': () => detail(8, 'Hợp đồng đang chờ', { status: 'CANCELLED' }),
     });
     renderAt('/documents?tab=2');
@@ -256,7 +256,7 @@ describe('Báo cáo và quản trị', () => {
   });
 
   it('trang quản trị: chỉ hiện tab đúng quyền', async () => {
-    installFetch({ ...baseRoutes({ ...ME, permissions: ['audit.view'] }), 'GET /admin/audit-logs': () => ({ content: [], page: { size: 20, number: 0, totalElements: 0, totalPages: 0 } }) });
+    installFetch({ ...baseRoutes({ ...ME, permissions: ['audit.view'] }), 'GET /admin/audit-logs': () => ({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }) });
     renderAt('/admin');
     expect(await screen.findByRole('button', { name: 'Nhật ký' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Người dùng' })).not.toBeInTheDocument();

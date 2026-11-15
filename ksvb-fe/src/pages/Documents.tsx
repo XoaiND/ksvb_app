@@ -105,7 +105,7 @@ export default function Documents() {
       </div>
     );
   } else {
-    const { totalElements, totalPages } = data.page;
+    const { totalElements, totalPages } = data;
     body = (
       <>
         <div className="scroll" aria-busy={loading}>

@@ -85,7 +85,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshPending = useCallback(() => {
     api
       .listSignRequests({ scope: 'pending', size: 1 })
-      .then((r) => setPendingCount(r.page.totalElements))
+      .then((r) => setPendingCount(r.totalElements))
       .catch(() => undefined);
   }, []);
 

@@ -6,7 +6,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('lớp gọi API', () => {
   it('gắn tiền tố /api, tham số truy vấn và header người dùng dev', async () => {
-    const { calls } = installFetch({ 'GET /sign-requests': () => ({ content: [], page: { size: 10, number: 2, totalElements: 0, totalPages: 0 } }) });
+    const { calls } = installFetch({ 'GET /sign-requests': () => ({ content: [], page: 2, size: 10, totalElements: 0, totalPages: 0 }) });
     await api.listSignRequests({ scope: 'mine', q: 'abc', status: 'DRAFT', page: 2 });
     const c = calls[0];
     expect(c.path).toBe('/sign-requests');
@@ -18,7 +18,7 @@ describe('lớp gọi API', () => {
   });
 
   it('bỏ qua tham số rỗng', async () => {
-    const { calls } = installFetch({ 'GET /sign-requests': () => ({ content: [], page: { size: 10, number: 0, totalElements: 0, totalPages: 0 } }) });
+    const { calls } = installFetch({ 'GET /sign-requests': () => ({ content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }) });
     await api.listSignRequests({ scope: 'pending', q: '', docType: '', status: '' });
     expect(calls[0].query.has('q')).toBe(false);
     expect(calls[0].query.has('docType')).toBe(false);
@@ -38,14 +38,16 @@ describe('lớp gọi API', () => {
   });
 
   it('lỗi 400 giữ lỗi theo từng trường', async () => {
-    installFetch({ 'POST /sign-requests': () => fail(400, 'Dữ liệu không hợp lệ', { title: 'Tiêu đề không được để trống' }) });
+    installFetch({ 'POST /sign-requests': () => fail(400, 'Dữ liệu không hợp lệ', 'VALIDATION_ERROR', [{ field: 'title', message: 'Tiêu đề không được để trống' }]) });
     const e = await api
       .createSignRequest({ title: '', docType: 'Hợp đồng', priority: 'NORMAL', mode: 'SEQ', shared: false, signerIds: [1], watcherIds: [] })
       .catch((x) => x);
     expect(e).toBeInstanceOf(ApiError);
     expect(e.status).toBe(400);
     expect(e.message).toBe('Dữ liệu không hợp lệ');
-    expect(e.errors).toEqual({ title: 'Tiêu đề không được để trống' });
+    expect(e.code).toBe('VALIDATION_ERROR');
+    expect(e.errors).toEqual([{ field: 'title', message: 'Tiêu đề không được để trống' }]);
+    expect(e.fieldError('title')).toBe('Tiêu đề không được để trống');
   });
 
   it('403 không có nội dung thì dùng thông điệp mặc định tiếng Việt', async () => {

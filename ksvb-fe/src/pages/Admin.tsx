@@ -91,10 +91,10 @@ function AuditTab() {
         </table>
       </div>
       <div className="pager">
-        <span>{data.page.totalElements} bản ghi</span>
+        <span>{data.totalElements} bản ghi</span>
         <b aria-label="Trang trước" onClick={() => page > 0 && setPage(page - 1)}>‹</b>
         <b className="on">{page + 1}</b>
-        <b aria-label="Trang sau" onClick={() => page + 1 < data.page.totalPages && setPage(page + 1)}>›</b>
+        <b aria-label="Trang sau" onClick={() => page + 1 < data.totalPages && setPage(page + 1)}>›</b>
       </div>
     </>
   );

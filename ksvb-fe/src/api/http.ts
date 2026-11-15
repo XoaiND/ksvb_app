@@ -2,16 +2,33 @@ import { authDisabled, devUserId, getToken } from '../auth';
 
 const BASE: string = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
-/** Lỗi từ backend (RFC 7807): `message` là thông điệp tiếng Việt, `errors` là lỗi theo từng trường (HTTP 400). */
+/** Một lỗi kiểm tra dữ liệu (`errors[]` trong ProblemDetail). */
+export interface FieldError {
+  field: string;
+  message: string;
+}
+
+/**
+ * Lỗi từ backend (RFC 7807, ECOSYSTEM.md 12.2): `message` là `detail` tiếng Việt, `code` là mã ổn định
+ * (`VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `BUSINESS_RULE`, `UNAUTHORIZED`, `INTERNAL_ERROR`),
+ * `errors` là lỗi theo từng trường (rỗng nếu không phải lỗi kiểm tra dữ liệu).
+ */
 export class ApiError extends Error {
   readonly status: number;
-  readonly errors?: Record<string, string>;
+  readonly code: string;
+  readonly errors: FieldError[];
 
-  constructor(status: number, message: string, errors?: Record<string, string>) {
+  constructor(status: number, message: string, code = '', errors: FieldError[] = []) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = code;
     this.errors = errors;
+  }
+
+  /** Thông điệp lỗi của một trường, nếu có. */
+  fieldError(field: string): string | undefined {
+    return this.errors.find((e) => e.field === field)?.message;
   }
 }
 
@@ -46,11 +63,17 @@ async function headers(json: boolean): Promise<Record<string, string>> {
 
 async function toError(res: Response): Promise<ApiError> {
   let detail = '';
-  let errors: Record<string, string> | undefined;
+  let code = '';
+  let errors: FieldError[] = [];
   try {
     const body = await res.json();
     detail = typeof body?.detail === 'string' ? body.detail : '';
-    if (body?.errors && typeof body.errors === 'object') errors = body.errors as Record<string, string>;
+    code = typeof body?.code === 'string' ? body.code : '';
+    if (Array.isArray(body?.errors)) {
+      errors = body.errors.filter(
+        (e: unknown): e is FieldError => typeof (e as FieldError)?.field === 'string' && typeof (e as FieldError)?.message === 'string',
+      );
+    }
   } catch {
     /* không phải JSON */
   }
@@ -60,7 +83,7 @@ async function toError(res: Response): Promise<ApiError> {
     404: 'Không tìm thấy dữ liệu.',
     413: 'Tệp vượt quá dung lượng cho phép.',
   };
-  return new ApiError(res.status, detail || fallback[res.status] || `Lỗi hệ thống (${res.status})`, errors);
+  return new ApiError(res.status, detail || fallback[res.status] || `Lỗi hệ thống (${res.status})`, code, errors);
 }
 
 export async function request<T>(method: string, path: string, opts: Options = {}): Promise<T> {

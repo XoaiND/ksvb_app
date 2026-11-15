@@ -12,9 +12,14 @@ export interface Call {
 type Reply = unknown | { __status: number; body?: unknown };
 type Route = (call: Call) => Reply;
 
-export const fail = (status: number, detail: string, errors?: Record<string, string>): Reply => ({
+export const fail = (
+  status: number,
+  detail: string,
+  code?: string,
+  errors?: { field: string; message: string }[],
+): Reply => ({
   __status: status,
-  body: { detail, errors },
+  body: { status, detail, code, errors },
 });
 
 /** Thay `fetch` bằng bộ định tuyến giả. Khoá route: "GET /sign-requests" (không gồm tiền tố /api và query). */
@@ -90,6 +95,9 @@ export const baseRoutes = (me: Me = ME): Record<string, Route> => ({
   'GET /templates': () => [],
   'GET /sign-requests': (c) => ({
     content: c.query.get('scope') === 'pending' ? [summary(5, 'Tờ trình ngân sách quý IV', { canSign: true })] : [summary(7, 'Báo giá XYZ', { status: 'DRAFT', creator: PEOPLE[3] })],
-    page: { size: 10, number: 0, totalElements: 1, totalPages: 1 },
+    page: 0,
+    size: 10,
+    totalElements: 1,
+    totalPages: 1,
   }),
 });

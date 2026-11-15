@@ -90,9 +90,13 @@ export interface SignRequestDetail {
   canEdit: boolean;
 }
 
+/** Dạng trang chung (`PageResponse` của BE, ECOSYSTEM.md 12.2): `page` đếm từ 0. */
 export interface PageResult<T> {
   content: T[];
-  page: { size: number; number: number; totalElements: number; totalPages: number };
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 export interface SaveSignRequestInput {
