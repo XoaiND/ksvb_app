@@ -3,4 +3,4 @@ data/
 .idea/
 *.iml
 .env
-config/
+/config/        # cấu hình chạy cục bộ ở gốc ksvb-be (không phải gói nguồn vn/vbi/ksvb/config)
