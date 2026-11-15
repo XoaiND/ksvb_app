@@ -1,69 +1,70 @@
 server:
-  port: ${SERVER_PORT:8082}   # 8080 = Keycloak, 8081 = HRM backend trên máy dev
+  port: ${KSVB_SERVER_PORT:8082}                      # 8080 = Keycloak, 8081 = HRM backend trên máy dev
   tomcat:
     # Thread pool xử lý request (bỏ qua khi bật virtual threads)
     threads:
-      max: ${TOMCAT_THREADS_MAX:200}
-      min-spare: ${TOMCAT_THREADS_MIN_SPARE:10}
-    accept-count: ${TOMCAT_ACCEPT_COUNT:100}        # hàng đợi khi hết thread
-    max-connections: ${TOMCAT_MAX_CONNECTIONS:8192}
+      max: ${KSVB_TOMCAT_THREADS_MAX:200}
+      min-spare: ${KSVB_TOMCAT_THREADS_MIN_SPARE:10}
+    accept-count: ${KSVB_TOMCAT_ACCEPT_COUNT:100}        # hàng đợi khi hết thread
+    max-connections: ${KSVB_TOMCAT_MAX_CONNECTIONS:8192}
     connection-timeout: 20s
     mbeanregistry:
-      enabled: true                                  # cần để có metric tomcat.threads.*
+      enabled: true                                 # cần để có metric tomcat.threads.*
 
 spring:
-  config:
-    # Bí mật (KSVB_DB_PASSWORD) KHÔNG ghi ở đây: lấy từ biến môi trường, hoặc file ksvb-be/.env khi chạy trên máy
-    # (không commit, mẫu ở ksvb-be/.env.example).
-    import: optional:file:.env[.properties]
   application:
-    name: ksvb-be
+    name: ksvb-backend
+  config:
+    # Bí mật (KSVB_DB_PASSWORD) KHÔNG ghi ở đây: lấy từ biến môi trường,
+    # hoặc file backend/.env khi chạy trên máy (không commit, mẫu ở backend/.env.example).
+    import: optional:file:.env[.properties]
   threads:
     virtual:
-      # true: mỗi request chạy trên 1 virtual thread (Java 21+); khi đó giới hạn thực tế là pool DB bên dưới.
-      enabled: ${VIRTUAL_THREADS_ENABLED:false}
-  # Mặc định giống HRM: PostgreSQL thật. KHÔNG dùng biến DB_URL/DB_USER/DB_PASSWORD (đó là của dịch vụ khác trên
-  # máy dev, dùng chung tên sẽ ghi nhầm vào DB của HRM) → dùng tiền tố KSVB_.
+      # true: mỗi request chạy trên 1 virtual thread (Java 21+). Khi đó giới hạn thực tế là pool DB bên dưới.
+      enabled: ${KSVB_VIRTUAL_THREADS_ENABLED:false}
   datasource:
     url: ${KSVB_DB_URL:jdbc:postgresql://localhost:5432/ksvb}
     username: ${KSVB_DB_USER:ksvb_app}
-    password: ${KSVB_DB_PASSWORD}
+    password: ${KSVB_DB_PASSWORD}                   # bắt buộc, không có giá trị mặc định
     hikari:
       pool-name: ksvb-db-pool
       # Tổng (số instance x maximum-pool-size) phải nhỏ hơn max_connections của PostgreSQL (mặc định 100)
-      maximum-pool-size: ${DB_POOL_MAX:10}
-      minimum-idle: ${DB_POOL_MIN_IDLE:10}          # = max: pool cố định, không phải tạo connection lúc tải tăng
-      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT:5000}   # ms chờ mượn connection, quá thì báo lỗi sớm
+      maximum-pool-size: ${KSVB_DB_POOL_MAX:10}
+      minimum-idle: ${KSVB_DB_POOL_MIN_IDLE:10}          # = max: pool cố định, không phải tạo connection lúc tải tăng
+      connection-timeout: ${KSVB_DB_POOL_CONNECTION_TIMEOUT:5000}   # ms chờ mượn connection, quá thì báo lỗi sớm
       validation-timeout: 3000
       idle-timeout: 600000                          # 10 phút (chỉ có tác dụng khi min-idle < max)
-      max-lifetime: ${DB_POOL_MAX_LIFETIME:1800000} # 30 phút, phải ngắn hơn timeout của DB/firewall
+      max-lifetime: ${KSVB_DB_POOL_MAX_LIFETIME:1800000} # 30 phút, phải ngắn hơn timeout của DB/firewall
       keepalive-time: 300000                        # ping connection rảnh mỗi 5 phút
-      leak-detection-threshold: ${DB_POOL_LEAK_DETECTION:0}    # ms; 0 = tắt. Dev nên đặt 20000
+      leak-detection-threshold: ${KSVB_DB_POOL_LEAK_DETECTION:0}    # ms; 0 = tắt. Dev nên đặt 20000
       data-source-properties:
-        ApplicationName: ksvb-be                    # hiện trong pg_stat_activity.application_name
+        ApplicationName: ksvb-backend               # hiện trong pg_stat_activity.application_name
   transaction:
     # Transaction (và các query bên trong) chạy quá thời gian này sẽ bị huỷ, tránh giữ connection mãi
-    default-timeout: ${DB_TX_TIMEOUT:30s}
+    default-timeout: ${KSVB_DB_TX_TIMEOUT:30s}
+  flyway:
+    enabled: ${KSVB_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    schemas: ${KSVB_DB_SCHEMA:ksvb}                 # Flyway tạo schema nếu chưa có (user cần quyền CREATE)
+    default-schema: ${KSVB_DB_SCHEMA:ksvb}
+    baseline-on-migrate: false                      # DB của KSVB do Flyway tạo từ đầu (V1)
+    validate-on-migrate: true
+    clean-disabled: true        # không bao giờ xoá sạch DB
   jpa:
     open-in-view: false         # không giữ connection suốt request
     hibernate:
-      ddl-auto: validate        # schema do Flyway quản lý (db/migration), Hibernate chỉ kiểm tra khớp
+      ddl-auto: validate        # schema do Flyway quản lý (db/migration); Hibernate chỉ kiểm tra khớp entity
     properties:
       hibernate:
-        default_schema: ${KSVB_DB_SCHEMA:ksvb}   # schema riêng của KSVB (đặt public nếu DB tạo theo kiểu HRM)
-  flyway:
-    enabled: true
-    schemas: ${KSVB_DB_SCHEMA:ksvb}              # Flyway tạo schema nếu chưa có (user cần quyền CREATE) và đặt bảng lịch sử ở đây
-    default-schema: ${KSVB_DB_SCHEMA:ksvb}
+        default_schema: ${KSVB_DB_SCHEMA:ksvb}
+        jdbc.time_zone: UTC
   security:
     oauth2:
       resourceserver:
         jwt:
-          # issuer-uri phải khớp claim "iss" của token (địa chỉ trình duyệt dùng, vd. http://localhost:8080/realms/dev).
-          issuer-uri: ${KSVB_OIDC_ISSUER_URI:https://sso.xoaind.io.vn/realms/dev}
-          # Trong Docker "localhost" không tới được Keycloak → đặt biến môi trường (KHÔNG khai báo ở đây, vì giá trị
-          # rỗng làm Spring tạo bộ giải mã sai):
-          #   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dev/protocol/openid-connect/certs
+          # phải khớp claim "iss" của token = địa chỉ Keycloak trình duyệt thấy. Trong Docker đặt thêm
+          # SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI trỏ Keycloak nội bộ (docker-compose.yml).
+          issuer-uri: ${KSVB_KEYCLOAK_ISSUER:https://sso.xoaind.io.vn/realms/dev}
           audiences: ksvb-api
   servlet:
     multipart:
@@ -74,40 +75,65 @@ spring:
 
 ksvb:
   security:
-    # true (mặc định) = bắt buộc đăng nhập Keycloak, quyền = client role của role-client (xem docs/PHAN_QUYEN.md).
-    # false = CHỈ dev/test: không đăng nhập, người dùng theo header X-User-Id (bị chặn ở profile prod).
-    enabled: ${KSVB_SECURITY_ENABLED:true}
-    role-client: ${KSVB_ROLE_CLIENT:ksvb-api}      # client Keycloak chứa quyền (document.create, ...)
-  storage:
-    path: ${KSVB_STORAGE_PATH:./data/upload}
+    enabled: ${KSVB_SECURITY_ENABLED:true}   # false: bỏ qua đăng nhập, người dùng theo header X-User-Id (chỉ dev)
+    role-client: ${KSVB_ROLE_CLIENT:ksvb-api} # client Keycloak chứa quyền (document.create, document.sign...)
   cors:
     allowed-origins: ${KSVB_CORS_ORIGINS:http://localhost:5174,http://127.0.0.1:5174,http://localhost:3001}
-  seed-demo: false
+  storage:
+    path: ${KSVB_STORAGE_PATH:./data/upload}
+  seed-demo: ${KSVB_SEED_DEMO:false}         # true: nạp người dùng + văn bản mẫu vào DB trống (chỉ dev)
 
 management:
-  # metrics/threaddump cần quyền system.monitor (xem SecurityConfig); health mở cho giám sát
-  endpoints.web.exposure.include: ${ACTUATOR_ENDPOINTS:health,info,metrics,threaddump,prometheus}
+  # metrics/threaddump/prometheus cần quyền system.monitor (xem SecurityConfig); health + liveness/readiness mở cho probe
+  endpoints.web.exposure.include: ${KSVB_ACTUATOR_ENDPOINTS:health,info,metrics,threaddump,prometheus}
   endpoint:
     health:
-      # /actuator/health/liveness (tiến trình còn sống) và /actuator/health/readiness (sẵn sàng nhận request, có DB)
-      probes.enabled: true
-      group.readiness.include: readinessState,db
-  # Tracing OpenTelemetry (ECOSYSTEM.md 12.5): traceId/spanId luôn có trong log; chỉ gửi span/metric/log ra collector
-  # OTLP khi KSVB_OTLP_ENABLED=true (mặc định tắt để không gọi localhost:4318 vô ích).
-  tracing:
-    sampling.probability: ${KSVB_TRACING_SAMPLING:1.0}
-    export.otlp.enabled: ${KSVB_OTLP_ENABLED:false}
-  opentelemetry:
-    resource-attributes:
-      service.name: ksvb-be
-    tracing.export.otlp.endpoint: ${KSVB_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
-  otlp:
-    metrics.export.enabled: ${KSVB_OTLP_ENABLED:false}
-    logging.export.enabled: ${KSVB_OTLP_ENABLED:false}
+      probes:
+        enabled: true          # /actuator/health/liveness, /actuator/health/readiness
+      show-details: never      # không lộ thông tin DB cho người chưa đăng nhập
+      group:
+        readiness:
+          include: readinessState,db   # chưa nhận request khi chưa tới được Postgres
 
-# Swagger UI /swagger-ui.html + spec /v3/api-docs. Bật ở dev; profile prod mặc định TẮT (application-prod.yml).
+  # Tracing OpenTelemetry (Micrometer Tracing): traceId/spanId luôn có trong MDC/log; gửi span sang collector OTLP khi bật
+  tracing:
+    sampling:
+      probability: ${KSVB_TRACING_SAMPLING:0.1}
+    export:
+      enabled: ${KSVB_TRACING_EXPORT_ENABLED:false}   # true khi đã có collector (Jaeger/Tempo/OTel Collector)
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${KSVB_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+    logging:
+      export:
+        otlp:
+          endpoint: ${KSVB_OTLP_LOGS_ENDPOINT:http://localhost:4318/v1/logs}
+  logging:
+    export:
+      otlp:
+        enabled: ${KSVB_OTLP_LOGS_ENABLED:false}
+  otlp:
+    metrics:
+      export:
+        enabled: ${KSVB_OTLP_METRICS_ENABLED:false}       # metrics xem qua /actuator/metrics|prometheus (quyền system.monitor)
+        url: ${KSVB_OTLP_METRICS_ENDPOINT:http://localhost:4318/v1/metrics}
+
+logging:
+  structured:
+    # Log JSON (structured logging của Spring Boot, có traceId/spanId): prod mặc định "ecs" (application-prod.yml),
+    # dev để trống = log chữ thường. Giá trị: ecs | logstash | gelf
+    format:
+      console: ${KSVB_LOG_FORMAT:}
+    ecs:
+      service:
+        name: ksvb-backend
+
 springdoc:
-  api-docs.enabled: ${KSVB_API_DOCS_ENABLED:true}
+  # Tắt ở profile prod (application-prod.yml); bật lại bằng KSVB_API_DOCS_ENABLED=true
+  api-docs:
+    enabled: ${KSVB_API_DOCS_ENABLED:true}
   swagger-ui:
     enabled: ${KSVB_API_DOCS_ENABLED:true}
     path: /swagger-ui.html

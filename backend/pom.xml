@@ -12,9 +12,9 @@
   </parent>
 
   <groupId>vn.vbi</groupId>
-  <artifactId>ksvb-be</artifactId>
+  <artifactId>ksvb-backend</artifactId>
   <version>0.1.0</version>
-  <name>ksvb-be</name>
+  <name>ksvb-backend</name>
   <description>Backend ký số văn bản (KSVB)</description>
 
   <properties>
@@ -78,11 +78,6 @@
       <artifactId>postgresql</artifactId>
       <scope>runtime</scope>
     </dependency>
-    <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <scope>runtime</scope>
-    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -99,7 +94,7 @@
       <artifactId>spring-boot-starter-security-test</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- Test repository/Flyway trên PostgreSQL thật (Testcontainers, cần Docker) thay H2 -->
+    <!-- Test tích hợp trên PostgreSQL thật (Testcontainers, cần Docker) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-testcontainers</artifactId>

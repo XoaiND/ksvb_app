@@ -34,6 +34,14 @@ public class CurrentUser {
         this.props = props;
     }
 
+    /** Tên người đang thao tác cho cột created_by/updated_by (tối đa 50 ký tự); job nền / chưa đăng nhập = SYSTEM. */
+    public static String username() {
+        Authentication a = SecurityContextHolder.getContext().getAuthentication();
+        if (a == null || a.getName() == null || "anonymousUser".equals(a.getName())) return "SYSTEM";
+        String n = a.getName();
+        return n.length() > 50 ? n.substring(0, 50) : n;
+    }
+
     public AppUser get() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         AppUser u = props.security().enabled() ? fromJwt(auth) : fromDev(auth);

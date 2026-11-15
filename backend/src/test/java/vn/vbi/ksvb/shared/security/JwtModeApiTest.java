@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.web;
+package vn.vbi.ksvb.shared.security;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.datasource.url=jdbc:tc:postgresql:17-alpine:///ksvbjwt"
 })
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles("it")
 class JwtModeApiTest {
 
     @Autowired MockMvc mvc;
@@ -44,7 +44,8 @@ class JwtModeApiTest {
     @Test
     void khongCoToken_tra401() throws Exception {
         mvc.perform(get("/api/me")).andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.reason").value("UNAUTHENTICATED"))
                 .andExpect(jsonPath("$.detail").isNotEmpty());
         mvc.perform(get("/api/sign-requests")).andExpect(status().isUnauthorized());
     }

@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.web;
+package vn.vbi.ksvb.config;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,7 +17,7 @@ class ApiDocsProfileTest {
     @Nested
     @SpringBootTest
     @AutoConfigureMockMvc
-    @ActiveProfiles("test")
+    @ActiveProfiles("it")
     class Dev {
         @Autowired MockMvc mvc;
 
@@ -33,7 +33,7 @@ class ApiDocsProfileTest {
             "spring.datasource.url=jdbc:tc:postgresql:17-alpine:///ksvbprod"
     })
     @AutoConfigureMockMvc
-    @ActiveProfiles({"test", "prod"})
+    @ActiveProfiles({"it", "prod"})
     class Prod {
         @Autowired MockMvc mvc;
 

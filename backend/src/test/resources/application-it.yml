@@ -1,11 +1,13 @@
+# Profile "it": test tích hợp với PostgreSQL thật trong Testcontainers (cần Docker), không dùng H2 (ECOSYSTEM.md 12.4).
+# Mỗi tên DB khác nhau trong URL jdbc:tc: là một container riêng → test cần dữ liệu tách biệt đặt URL riêng.
 spring:
+  config:
+    import: ""                 # không đọc backend/.env của máy dev
   datasource:
-    # PostgreSQL thật qua Testcontainers (cần Docker), không dùng H2 để kiểm SQL (ECOSYSTEM.md 12.4).
-    # Mỗi tên DB khác nhau trong URL jdbc:tc: là một container riêng → test cần dữ liệu tách biệt đặt URL riêng.
     url: jdbc:tc:postgresql:17-alpine:///ksvbtest
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
     username: test
-    password: test
+    password: test             # chỉ để không thiếu KSVB_DB_PASSWORD
   jpa:
     properties:
       hibernate:
@@ -13,9 +15,15 @@ spring:
   flyway:
     schemas: public
     default-schema: public
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:1/realms/test
+
 ksvb:
   security:
-    enabled: false      # test dev: người dùng theo X-User-Id; test JWT bật riêng trong JwtModeApiTest
+    enabled: false      # chế độ dev: người dùng theo X-User-Id; test JWT bật riêng trong JwtModeApiTest
   storage:
     path: ./target/test-upload
   seed-demo: true

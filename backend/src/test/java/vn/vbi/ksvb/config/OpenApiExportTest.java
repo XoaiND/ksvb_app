@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.web;
+package vn.vbi.ksvb.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,12 +14,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Xuất spec OpenAPI ra {@code target/openapi/ksvb-api.json} để FE sinh kiểu TypeScript
- * ({@code npm run gen:api} trong ksvb-fe), khỏi phải chạy server. ECOSYSTEM.md 12.3.
+ * Xuất đặc tả OpenAPI ({@code /v3/api-docs}) để frontend sinh kiểu TypeScript (ECOSYSTEM.md 12.3, 12.7).
+ * Luôn ghi {@code target/openapi.json} (CI so với bản frontend dùng); đặt
+ * {@code -Dksvb.openapi.out=../frontend/openapi/openapi.json} để cập nhật bản đó, rồi {@code npm run gen:api}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles("it")
 class OpenApiExportTest {
 
     @Autowired MockMvc mvc;
@@ -29,8 +30,14 @@ class OpenApiExportTest {
         String spec = mvc.perform(get("/v3/api-docs")).andReturn().getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
         assertThat(spec).contains("\"/api/sign-requests\"");
-        Path out = Path.of("target", "openapi", "ksvb-api.json");
-        Files.createDirectories(out.getParent());
-        Files.writeString(out, spec, StandardCharsets.UTF_8);
+        // bỏ "servers" (phụ thuộc môi trường chạy test) để đặc tả ổn định giữa các lần xuất
+        spec = spec.replaceFirst("\"servers\":\\[[^\\]]*\\],?", "");
+        Files.writeString(Path.of("target/openapi.json"), spec, StandardCharsets.UTF_8);
+        String out = System.getProperty("ksvb.openapi.out");
+        if (out != null && !out.isBlank()) {
+            Path p = Path.of(out);
+            Files.createDirectories(p.toAbsolutePath().getParent());
+            Files.writeString(p, spec, StandardCharsets.UTF_8);
+        }
     }
 }

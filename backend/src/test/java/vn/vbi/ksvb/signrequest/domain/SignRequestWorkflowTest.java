@@ -110,7 +110,7 @@ class SignRequestWorkflowTest {
         r.submit(4L, "X", NOW);
 
         assertThatThrownBy(() -> r.reject(1L, "  ", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.BAD_REQUEST));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
 
         r.reject(1L, "Thiếu phụ lục", NOW);
         assertThat(r.getStatus()).isEqualTo(DocStatus.REJECTED);
@@ -125,7 +125,7 @@ class SignRequestWorkflowTest {
         assertThatThrownBy(() -> r.cancel(1L, "lý do", NOW))
                 .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.FORBIDDEN));
         assertThatThrownBy(() -> r.cancel(4L, "", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.BAD_REQUEST));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
 
         r.cancel(4L, "Nộp nhầm", NOW);
         assertThat(r.getStatus()).isEqualTo(DocStatus.CANCELLED);
@@ -164,12 +164,12 @@ class SignRequestWorkflowTest {
     void trinhKy_canNguoiKyVaTepPdf() {
         SignRequest empty = new SignRequest(creator, "T", "Hợp đồng", NOW);
         assertThatThrownBy(() -> empty.submit(4L, "X", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.BAD_REQUEST));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
 
         SignRequest noFile = new SignRequest(creator, "T", "Hợp đồng", NOW);
         noFile.replaceSigners(List.of(a));
         assertThatThrownBy(() -> noFile.submit(4L, "X", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.BAD_REQUEST));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
     }
 
     @Test
@@ -188,7 +188,7 @@ class SignRequestWorkflowTest {
     void luongKyKhongChoPhepTrungNguoi() {
         SignRequest r = new SignRequest(creator, "T", "Hợp đồng", NOW);
         assertThatThrownBy(() -> r.replaceSigners(List.of(a, a)))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.BAD_REQUEST));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
     }
 
     @Test

@@ -1,7 +1,5 @@
 target/
-data/
 .idea/
 *.iml
-.env
-# cấu hình chạy cục bộ ở gốc ksvb-be (không phải gói nguồn vn/vbi/ksvb/config)
+# cấu hình chạy cục bộ ở gốc backend (không phải gói nguồn vn/vbi/ksvb/config)
 /config/

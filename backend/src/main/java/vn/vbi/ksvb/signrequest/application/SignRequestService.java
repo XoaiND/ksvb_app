@@ -67,7 +67,7 @@ public class SignRequestService {
                                            DocStatus status, int page, int size) {
         Scope s = parseScope(scope);
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), PageResponse.MAX_SIZE),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         Specification<SignRequest> spec = SignRequestSpecs.scope(s, me.getId())
                 .and(SignRequestSpecs.filter(q, docType, unit, status));
         return PageResponse.of(requests.findAll(spec, pageable).map(r -> toSummary(r, me)));

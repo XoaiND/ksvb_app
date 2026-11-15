@@ -10,22 +10,22 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthen
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import vn.vbi.ksvb.shared.error.ErrorCode;
+import vn.vbi.ksvb.shared.error.ApiErrorCode;
 
 /**
  * 401/403 sinh ở tầng filter (trước khi tới controller) cũng trả RFC 7807 có {@code code}, như lỗi từ controller.
  * Giữ header {@code WWW-Authenticate} của chuẩn Bearer bằng cách gọi bộ xử lý mặc định trước.
  */
-public final class ProblemSecurityHandlers {
+public final class ProblemResponses {
 
-    private ProblemSecurityHandlers() {
+    private ProblemResponses() {
     }
 
     public static AuthenticationEntryPoint entryPoint() {
         BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();
         return (req, res, ex) -> {
             bearer.commence(req, res, ex);
-            write(req, res, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED,
+            write(req, res, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED",
                     "Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại.");
         };
     }
@@ -34,11 +34,12 @@ public final class ProblemSecurityHandlers {
         BearerTokenAccessDeniedHandler bearer = new BearerTokenAccessDeniedHandler();
         return (req, res, ex) -> {
             bearer.handle(req, res, ex);
-            write(req, res, HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này.");
+            write(req, res, HttpStatus.FORBIDDEN, null, "Bạn không có quyền thực hiện thao tác này.");
         };
     }
 
-    static void write(HttpServletRequest req, HttpServletResponse res, HttpStatus status, String code, String detail)
+    /** {@code code} luôn là {@code FORBIDDEN} (bộ mã 12.2); 401 có thêm {@code reason=UNAUTHENTICATED} (như HRM). */
+    static void write(HttpServletRequest req, HttpServletResponse res, HttpStatus status, String reason, String detail)
             throws IOException {
         if (res.isCommitted()) {
             return;
@@ -48,7 +49,8 @@ public final class ProblemSecurityHandlers {
         res.setCharacterEncoding(StandardCharsets.UTF_8.name());
         res.getWriter().write("{\"type\":\"about:blank\",\"title\":\"" + status.getReasonPhrase()
                 + "\",\"status\":" + status.value() + ",\"detail\":\"" + detail + "\",\"instance\":\""
-                + escape(req.getRequestURI()) + "\",\"code\":\"" + code + "\"}");
+                + escape(req.getRequestURI()) + "\",\"code\":\"" + ApiErrorCode.FORBIDDEN + "\""
+                + (reason == null ? "" : ",\"reason\":\"" + reason + "\"") + "}");
     }
 
     private static String escape(String s) {

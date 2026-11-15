@@ -39,7 +39,7 @@ import vn.vbi.ksvb.user.infra.UserRepository;
         "spring.flyway.schemas=ksvb",
         "spring.flyway.default-schema=ksvb"
 })
-@ActiveProfiles("test")
+@ActiveProfiles("it")
 @Testcontainers
 class PostgresIntegrationTest {
 
@@ -107,6 +107,13 @@ class PostgresIntegrationTest {
         assertThat(first.getStatus()).isEqualTo("NEW");
         assertThat(first.getAggregateCode()).startsWith("CV-");
         assertThat(first.getPayload()).contains("\"status\":\"PENDING\"");
+
+        // cột audit chung (V3): trigger cập nhật updated_at, version_no tăng mỗi lần sửa; created_by ghi người tạo
+        var audit = jdbc.queryForMap("select version_no, created_by, created_at, updated_at from ksvb.sign_request where id = ?", id);
+        assertThat((Integer) audit.get("version_no")).isGreaterThanOrEqualTo(2);
+        assertThat(audit.get("created_by")).isEqualTo("SYSTEM"); // gọi service ngoài request: không có người đăng nhập
+        assertThat(audit.get("created_at")).isNotNull();
+        assertThat(audit.get("updated_at")).isNotNull();
 
         // ký lại khi đã hoàn thành → lỗi, transaction huỷ: không thêm sự kiện
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.sign(signer, id, null));

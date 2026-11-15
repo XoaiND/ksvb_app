@@ -12,10 +12,11 @@ import jakarta.persistence.Transient;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import vn.vbi.ksvb.shared.audit.Auditable;
 
 @Entity
 @Table(name = "app_user")
-public class AppUser {
+public class AppUser extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

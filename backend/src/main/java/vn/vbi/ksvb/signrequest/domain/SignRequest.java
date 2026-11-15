@@ -16,7 +16,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import vn.vbi.ksvb.shared.audit.Auditable;
 import vn.vbi.ksvb.shared.error.BusinessException;
 import vn.vbi.ksvb.shared.security.Permissions;
 import vn.vbi.ksvb.user.domain.AppUser;
@@ -38,14 +38,11 @@ import vn.vbi.ksvb.user.domain.AppUser;
  */
 @Entity
 @Table(name = "sign_request")
-public class SignRequest {
+public class SignRequest extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Version
-    private long version;
 
     @Column(length = 40)
     private String code;
@@ -89,12 +86,6 @@ public class SignRequest {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     @Column(length = 500)
     private String message;
 
@@ -120,8 +111,6 @@ public class SignRequest {
         this.title = title;
         this.docType = docType;
         this.unitName = creator.getUnitName();
-        this.createdAt = now;
-        this.updatedAt = now;
     }
 
     // ------------------------------------------------------------------ chỉnh sửa (chỉ khi nháp)
@@ -139,14 +128,13 @@ public class SignRequest {
         this.deadline = deadline;
         this.message = message;
         this.shared = shared;
-        touch(now);
     }
 
     /** Thay toàn bộ luồng ký theo đúng thứ tự truyền vào. */
     public void replaceSigners(List<AppUser> signers) {
         requireStatus(DocStatus.DRAFT, "Chỉ sửa được luồng ký khi văn bản là bản nháp");
         if (signers.stream().map(AppUser::getId).distinct().count() != signers.size()) {
-            throw BusinessException.badRequest("Một người không được xuất hiện hai lần trong luồng ký");
+            throw BusinessException.businessRule("Một người không được xuất hiện hai lần trong luồng ký");
         }
         participants.clear();
         int order = 1;
@@ -179,10 +167,10 @@ public class SignRequest {
         requireCreator(actorId, "Chỉ người tạo mới được trình ký");
         requireStatus(DocStatus.DRAFT, "Chỉ trình ký được văn bản ở trạng thái nháp");
         if (participants.isEmpty()) {
-            throw BusinessException.badRequest("Cần ít nhất một người ký");
+            throw BusinessException.businessRule("Cần ít nhất một người ký");
         }
         if (!hasSignableAttachment()) {
-            throw BusinessException.badRequest("Cần ít nhất một tệp PDF cần ký");
+            throw BusinessException.businessRule("Cần ít nhất một tệp PDF cần ký");
         }
         this.code = this.code == null ? code : this.code;
         this.status = DocStatus.PENDING;
@@ -194,7 +182,6 @@ public class SignRequest {
         } else {
             participants.get(0).activate();
         }
-        touch(now);
     }
 
     public void sign(Long userId, String note, LocalDateTime now) {
@@ -215,13 +202,12 @@ public class SignRequest {
             participants.stream().filter(x -> x.getStatus() == SignerStatus.WAITING).findFirst()
                     .ifPresent(Participant::activate);
         }
-        touch(now);
     }
 
     public void reject(Long userId, String reason, LocalDateTime now) {
         requireStatus(DocStatus.PENDING, "Văn bản không còn ở trạng thái chờ ký");
         if (reason == null || reason.isBlank()) {
-            throw BusinessException.badRequest("Cần nhập lý do từ chối");
+            throw BusinessException.businessRule("Cần nhập lý do từ chối");
         }
         Participant p = participantOf(userId);
         if (p.getStatus() != SignerStatus.PENDING) {
@@ -229,7 +215,6 @@ public class SignRequest {
         }
         p.markRejected(reason.trim(), now);
         this.status = DocStatus.REJECTED;
-        touch(now);
     }
 
     /** Huỷ: chỉ người tạo, khi đang chờ ký và chưa ai ký/từ chối. */
@@ -240,11 +225,10 @@ public class SignRequest {
             throw BusinessException.conflict("Đã có người ký hoặc từ chối nên không thể huỷ");
         }
         if (reason == null || reason.isBlank()) {
-            throw BusinessException.badRequest("Cần nhập lý do huỷ");
+            throw BusinessException.businessRule("Cần nhập lý do huỷ");
         }
         this.cancellationReason = reason.trim();
         this.status = DocStatus.CANCELLED;
-        touch(now);
     }
 
     /** Thu hồi về nháp: chỉ người tạo, khi đang chờ ký và chưa ai ký/từ chối. */
@@ -257,14 +241,12 @@ public class SignRequest {
         this.status = DocStatus.DRAFT;
         this.submittedAt = null;
         participants.forEach(Participant::reset);
-        touch(now);
     }
 
     /** Đánh dấu hết hạn nếu quá hạn ký. Trả về true nếu có thay đổi. */
     public boolean expireIfOverdue(LocalDate today, LocalDateTime now) {
         if (status == DocStatus.PENDING && deadline != null && deadline.isBefore(today)) {
             this.status = DocStatus.EXPIRED;
-            touch(now);
             return true;
         }
         return false;
@@ -330,10 +312,6 @@ public class SignRequest {
         }
     }
 
-    private void touch(LocalDateTime now) {
-        this.updatedAt = now;
-    }
-
     public Long getId() { return id; }
     public String getCode() { return code; }
     public String getTitle() { return title; }
@@ -348,7 +326,6 @@ public class SignRequest {
     public LocalDate getDeadline() { return deadline; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
     public String getMessage() { return message; }
     public String getCancellationReason() { return cancellationReason; }
     public List<Participant> getParticipants() { return participants; }

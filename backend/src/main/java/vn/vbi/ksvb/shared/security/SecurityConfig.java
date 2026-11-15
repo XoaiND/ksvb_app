@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.config;
+package vn.vbi.ksvb.shared.security;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,9 +24,7 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import vn.vbi.ksvb.shared.security.DevUserFilter;
-import vn.vbi.ksvb.shared.security.Permissions;
-import vn.vbi.ksvb.shared.security.ProblemSecurityHandlers;
+import vn.vbi.ksvb.config.KsvbProperties;
 import vn.vbi.ksvb.user.infra.UserRepository;
 
 /**
@@ -63,11 +61,11 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").hasAuthority(Permissions.SYSTEM_MONITOR)
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
-                .exceptionHandling(e -> e.authenticationEntryPoint(ProblemSecurityHandlers.entryPoint())
-                        .accessDeniedHandler(ProblemSecurityHandlers.accessDenied()))
+                .exceptionHandling(e -> e.authenticationEntryPoint(ProblemResponses.entryPoint())
+                        .accessDeniedHandler(ProblemResponses.accessDenied()))
                 .oauth2ResourceServer(o -> o
-                        .authenticationEntryPoint(ProblemSecurityHandlers.entryPoint())
-                        .accessDeniedHandler(ProblemSecurityHandlers.accessDenied())
+                        .authenticationEntryPoint(ProblemResponses.entryPoint())
+                        .accessDeniedHandler(ProblemResponses.accessDenied())
                         .jwt(j -> j.jwtAuthenticationConverter(jwtConverter(roleClient))));
         return http.build();
     }

@@ -66,11 +66,11 @@ public class TemplateService {
 
     private void validateSigners(List<Long> ids) {
         if (ids.stream().distinct().count() != ids.size()) {
-            throw BusinessException.badRequest("Một người không được xuất hiện hai lần trong mẫu");
+            throw BusinessException.businessRule("Một người không được xuất hiện hai lần trong mẫu");
         }
         long found = users.findAllById(ids).size();
         if (found != ids.size()) {
-            throw BusinessException.badRequest("Có người ký không tồn tại");
+            throw BusinessException.businessRule("Có người ký không tồn tại");
         }
     }
 

@@ -14,12 +14,13 @@ import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import vn.vbi.ksvb.shared.audit.Auditable;
 import vn.vbi.ksvb.signrequest.domain.SignMode;
 
 /** Danh sách người nhận (luồng ký) mẫu. */
 @Entity
 @Table(name = "sign_template")
-public class SignTemplate {
+public class SignTemplate extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

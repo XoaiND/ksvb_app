@@ -1,31 +1,29 @@
 package vn.vbi.ksvb.shared.error;
 
 /**
- * Mã lỗi chung trong thuộc tính {@code code} của ProblemDetail (ECOSYSTEM.md 12.2). FE dựa vào mã, không dựa vào
- * câu chữ của {@code detail}.
+ * Bộ mã lỗi chuẩn (ECOSYSTEM.md 12.2), luôn nằm ở thuộc tính {@code code} của ProblemDetail. Mã nghiệp vụ chi tiết
+ * (vd. {@code CONCURRENT_UPDATE}, {@code UNAUTHENTICATED}) nằm ở thuộc tính {@code reason}. FE dựa vào mã, không dựa
+ * vào câu chữ của {@code detail}.
  */
-public final class ErrorCode {
+public final class ApiErrorCode {
 
     public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
-    public static final String UNAUTHORIZED = "UNAUTHORIZED";
     public static final String NOT_FOUND = "NOT_FOUND";
     public static final String FORBIDDEN = "FORBIDDEN";
     public static final String CONFLICT = "CONFLICT";
     public static final String BUSINESS_RULE = "BUSINESS_RULE";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
 
-    private ErrorCode() {
+    private ApiErrorCode() {
     }
 
-    /** Mã mặc định theo HTTP status, dùng cho lỗi chuẩn của Spring và {@link BusinessException} không ghi mã. */
-    public static String forStatus(int status) {
-        return switch (status) {
-            case 400 -> BUSINESS_RULE;
-            case 401 -> UNAUTHORIZED;
-            case 403 -> FORBIDDEN;
-            case 404 -> NOT_FOUND;
-            case 409, 412 -> CONFLICT;
-            default -> status >= 500 ? INTERNAL_ERROR : BUSINESS_RULE;
-        };
+    /** Mã chuẩn suy từ mã HTTP, dùng cho lỗi do Spring sinh ra (400, 404, 405, 415...) và BusinessException. */
+    public static String fromStatus(int s) {
+        if (s == 401 || s == 403) return FORBIDDEN;
+        if (s == 404) return NOT_FOUND;
+        if (s == 409 || s == 412) return CONFLICT;
+        if (s == 422) return BUSINESS_RULE;
+        if (s >= 500) return INTERNAL_ERROR;
+        return VALIDATION_ERROR;
     }
 }

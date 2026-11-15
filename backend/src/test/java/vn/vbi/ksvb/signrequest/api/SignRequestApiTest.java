@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.web;
+package vn.vbi.ksvb.signrequest.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -24,7 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Kiểm thử toàn tuyến: Flyway + JPA + controller trên PostgreSQL (Testcontainers), người dùng lấy từ header X-User-Id. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles("it")
 class SignRequestApiTest {
 
     @Autowired MockMvc mvc;
@@ -76,7 +76,7 @@ class SignRequestApiTest {
 
         // chưa có tệp PDF → không trình ký được
         mvc.perform(post("/api/sign-requests/" + id + "/submit").header("X-User-Id", 4))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("BUSINESS_RULE"));
 
         // tệp giả đuôi pdf nhưng nội dung không phải PDF → bị từ chối
@@ -133,7 +133,7 @@ class SignRequestApiTest {
 
         mvc.perform(post("/api/sign-requests/" + id + "/reject").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"note\":\"\"}").header("X-User-Id", 4))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
