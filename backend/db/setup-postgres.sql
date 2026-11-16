@@ -1,13 +1,13 @@
 -- Tạo user + database + schema RIÊNG cho KSVB trên PostgreSQL (chạy MỘT lần, bằng tài khoản quản trị DB).
 --
 --   psql -h <host> -U <tài khoản quản trị> -d postgres -v ON_ERROR_STOP=1 \
---        -v app_password='<mật khẩu cho ksvb_app>' -f ksvb-be/db/setup-postgres.sql
+--        -v app_password='<mật khẩu cho ksvb_app>' -f backend/db/setup-postgres.sql
 --
 -- Mật khẩu truyền qua biến psql, KHÔNG ghi vào file. Sau khi chạy, đặt trong .env:
 --   KSVB_DB_URL=jdbc:postgresql://<host>:5432/ksvb
 --   KSVB_DB_USER=ksvb_app
 --   KSVB_DB_PASSWORD=<mật khẩu vừa đặt>
--- Bảng do Flyway tạo khi ksvb-be khởi động lần đầu (profile prod); không tạo bảng ở đây.
+-- Bảng do Flyway tạo khi backend khởi động lần đầu (profile prod); không tạo bảng ở đây.
 
 -- 1) User đăng nhập thường (không superuser, không tạo DB/role).
 CREATE ROLE ksvb_app LOGIN PASSWORD :'app_password'

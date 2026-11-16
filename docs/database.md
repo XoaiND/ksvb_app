@@ -1,13 +1,14 @@
 # Cơ sở dữ liệu – KSVB
 
 PostgreSQL, database `ksvb`, schema `ksvb` (đặt bằng `KSVB_DB_SCHEMA`), tài khoản ứng dụng `ksvb_app`.
-Profile `h2` và test dùng H2 trong bộ nhớ, schema `public`.
+Chỉ hỗ trợ PostgreSQL (không còn H2). Test chạy PostgreSQL 17 trong Testcontainers, schema `public` (riêng `PostgresIntegrationTest` dùng `ksvb`).
 
 ## Flyway
-- Migration ở `ksvb-be/src/main/resources/db/migration`. Hiện có `V1__init.sql` (toàn bộ schema ban đầu), `V2__audit_result_outbox.sql` (cột `audit_log.result`, bảng `ksvb_outbox`).
+- Migration ở `backend/src/main/resources/db/migration`. Hiện có `V1__init.sql` (toàn bộ schema ban đầu), `V2__audit_result_outbox.sql` (cột `audit_log.result`, bảng `ksvb_outbox`), `V3__auditable_columns.sql` (cột audit chung + trigger `trg_touch_row`, xem dưới).
 - Backend tự chạy Flyway khi khởi động; JPA ở chế độ `ddl-auto: validate` (lệch entity với bảng thì không khởi động).
-- Thay đổi schema = thêm `V2__...sql`, **không sửa** file đã áp dụng.
-- Tạo DB lần đầu: `ksvb-be/db/setup-postgres.sql` (role `ksvb_app`, database `ksvb`, schema `ksvb`, `search_path`), chạy bằng tài khoản quản trị Postgres.
+- Thay đổi schema = thêm `V4__...sql`, **không sửa** file đã áp dụng (kể cả chú thích: đổi checksum làm Flyway báo lỗi).
+- Cột audit chung (ECOSYSTEM.md 12.7, giống HRM) trên `sign_request`, `sign_template`, `app_user`: `version_no` (khoá lạc quan, mặc định 1), `created_at` (DB sinh `now()`), `created_by` (người tạo, mặc định `SYSTEM`), `updated_at` + `version_no` do trigger `trg_touch_row()` cập nhật khi UPDATE, `updated_by`. Entity kế thừa `shared/audit/Auditable`.
+- Tạo DB lần đầu: `backend/db/setup-postgres.sql` (role `ksvb_app`, database `ksvb`, schema `ksvb`, `search_path`), chạy bằng tài khoản quản trị Postgres.
 
 ## ERD
 

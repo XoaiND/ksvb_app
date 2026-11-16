@@ -1,6 +1,6 @@
 # Phân quyền KSVB
 
-Theo code hiện tại: `ksvb-be/.../shared/security/Permissions.java` và `docs/keycloak/setup-ksvb.sh` (tạo đúng các quyền, role dưới đây).
+Theo code hiện tại: `backend/.../shared/security/Permissions.java` và `docs/keycloak/setup-ksvb.sh` (tạo đúng các quyền, role dưới đây).
 
 Quyền chi tiết = client role của client `ksvb-api` trong Keycloak (realm `dev`), kiểm bằng `@PreAuthorize("hasAuthority('...')")`
 (cách HRM đang làm). Role tổng hợp là composite role bên Keycloak; backend không kiểm tên role tổng hợp.

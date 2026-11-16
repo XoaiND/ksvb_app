@@ -1,6 +1,6 @@
 # Quy tắc nghiệp vụ – KSVB
 
-Theo code `ksvb-be` (luật nằm trong `signrequest/domain/SignRequest.java`, `signrequest/application/SignRequestService.java`). Vi phạm trả lỗi tiếng Việt: 400 dữ liệu sai, 403 không có quyền, 409 sai trạng thái.
+Theo code `backend` (luật nằm trong `signrequest/domain/SignRequest.java`, `signrequest/application/SignRequestService.java`). Vi phạm trả lỗi tiếng Việt: 400 dữ liệu sai, 403 không có quyền, 409 sai trạng thái.
 
 ## Trạng thái văn bản
 
