@@ -9,7 +9,7 @@ RUN mvn -q -B package -DskipTests
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --system --gid 10001 ksvb && useradd --system --uid 10001 --gid ksvb --no-create-home ksvb \
-    && mkdir -p /app/data/upload && chown -R ksvb:ksvb /app/data
+    && mkdir -p /app/data && chown -R ksvb:ksvb /app/data
 COPY --from=build --chown=ksvb:ksvb /src/target/ksvb-backend-*.jar app.jar
 USER ksvb
 ENV TZ=Asia/Ho_Chi_Minh JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"

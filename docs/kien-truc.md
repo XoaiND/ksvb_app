@@ -29,7 +29,7 @@ giữ bản chụp ở bảng `app_user` (tạo ở lần đăng nhập đầu, 
 
 ## 4. Thành phần riêng của app
 - **Lưu tệp PDF**: `signrequest/application/AttachmentService` ghi tệp vào thư mục `KSVB_STORAGE_PATH` (mặc định `./data/upload`,
-  trong Docker `/app/data/upload` là volume), tên UUID do server sinh, kiểm đuôi và chữ ký `%PDF-`, tối đa 20 MB.
+  trong Docker `/app/data` là volume (thư mục `upload` tự tạo khi ghi lần đầu)), tên UUID do server sinh, kiểm đuôi và chữ ký `%PDF-`, tối đa 20 MB.
 - **Số hiệu văn bản** (`HD-2026-0001`): `signrequest/application/SignRequestService.nextCode` đọc bộ đếm `doc_counter` với khoá ghi
   (`SELECT ... FOR UPDATE`), tiền tố theo loại văn bản.
 - **Hết hạn ký**: `signrequest/application/ExpiryJob` chạy hằng ngày, chuyển văn bản quá hạn sang `EXPIRED`.

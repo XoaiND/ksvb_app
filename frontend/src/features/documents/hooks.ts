@@ -1,4 +1,5 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useApiQuery } from '../../shared/api/query';
 import type { ListParams } from '../../shared/api/types';
 import { dashboardKeys } from '../dashboard/hooks';
 import { documentsApi } from './api';
@@ -10,7 +11,7 @@ const documentKeys = {
   pendingCount: ['sign-requests', 'pending-count'] as const,
 };
 
-export const useUsers = () => useQuery({ queryKey: documentKeys.users, queryFn: documentsApi.users, staleTime: 60_000 });
+export const useUsers = () => useApiQuery(documentKeys.users, documentsApi.users, { silent: true, keepPrevious: false });
 
 /** Danh sách đơn vị (lấy từ danh bạ người dùng) cho bộ lọc. */
 export function useUnits(): string[] {
@@ -19,20 +20,16 @@ export function useUnits(): string[] {
 }
 
 export const useSignRequests = (p: ListParams) =>
-  useQuery({
-    queryKey: [...documentKeys.all, 'list', p],
-    queryFn: () => documentsApi.list(p),
-    placeholderData: keepPreviousData,
-  });
+  useApiQuery([...documentKeys.all, 'list', p], () => documentsApi.list(p), { silent: true });
 
 export const useSignRequest = (id: number, enabled = true) =>
-  useQuery({ queryKey: [...documentKeys.all, 'detail', id], queryFn: () => documentsApi.get(id), enabled });
+  useApiQuery([...documentKeys.all, 'detail', id], () => documentsApi.get(id), { enabled, silent: true, keepPrevious: false });
 
 /** Số văn bản đang chờ tôi ký (huy hiệu ở menu, chuông). */
 export const usePendingCount = () =>
-  useQuery({
-    queryKey: documentKeys.pendingCount,
-    queryFn: () => documentsApi.list({ scope: 'pending', size: 1 }).then((r) => r.totalElements),
+  useApiQuery(documentKeys.pendingCount, () => documentsApi.list({ scope: 'pending', size: 1 }).then((r) => r.totalElements), {
+    silent: true,
+    keepPrevious: false,
   }).data ?? 0;
 
 /** Sau thao tác ghi: làm mới mọi danh sách/chi tiết văn bản, số việc chờ ký và dashboard. */

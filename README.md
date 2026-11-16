@@ -126,7 +126,7 @@ cp .env.example .env           # KSVB_DB_PASSWORD
 docker compose up -d --build   # frontend: http://localhost:3001, backend: http://localhost:8082
 ```
 - Dùng network ngoài `local-network` (Postgres `postgres`, Keycloak `keycloak` chạy riêng); compose đặt
-  `SPRING_PROFILES_ACTIVE=prod` (log JSON, Swagger tắt) và mount `./data/upload` để lưu tệp PDF.
+  `SPRING_PROFILES_ACTIVE=prod` (log JSON, Swagger tắt) và mount `./data` (vào `/app/data`; tệp lưu ở `data/upload`) để lưu tệp PDF.
 - Image chạy bằng user không phải root (backend uid 10001, frontend `nginx-unprivileged` uid 101) và có `HEALTHCHECK`:
   backend `/actuator/health/liveness`, frontend `/healthz`. Frontend chờ backend `healthy` mới chạy.
 - Nginx của frontend nghe cổng 8080 (compose `3001:8080`) và chuyển `/api` sang `ksvb-backend:8082`.

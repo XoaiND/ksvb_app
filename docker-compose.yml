@@ -17,7 +17,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/dev/protocol/openid-connect/certs
       KSVB_CORS_ORIGINS: ${KSVB_PUBLIC_URL:-http://localhost:3001},http://localhost:3001,http://localhost:5174
     volumes:
-      - ./data/upload:/app/data/upload
+      - ./data:/app/data
     ports:
       - "8082:8082" # chỉ để debug local
     restart: unless-stopped

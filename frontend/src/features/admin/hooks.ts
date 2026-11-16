@@ -1,11 +1,7 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useApiQuery } from '../../shared/api/query';
 import { adminApi } from './api';
 
-export const useAdminUsers = () => useQuery({ queryKey: ['admin', 'users'], queryFn: adminApi.users });
+export const useAdminUsers = () => useApiQuery(['admin', 'users'], adminApi.users, { silent: true, keepPrevious: false });
 
 export const useAuditLogs = (page: number, size = 20) =>
-  useQuery({
-    queryKey: ['admin', 'audit', page, size],
-    queryFn: () => adminApi.auditLogs(page, size),
-    placeholderData: keepPreviousData,
-  });
+  useApiQuery(['admin', 'audit', page, size], () => adminApi.auditLogs(page, size), { silent: true });

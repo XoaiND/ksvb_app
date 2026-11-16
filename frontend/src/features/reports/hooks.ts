@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useApiQuery } from '../../shared/api/query';
 import { reportsApi } from './api';
 
-export const useReport = () => useQuery({ queryKey: ['reports', 'summary'], queryFn: reportsApi.summary });
+export const useReport = () => useApiQuery(['reports', 'summary'], reportsApi.summary, { silent: true, keepPrevious: false });

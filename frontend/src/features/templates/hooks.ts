@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useApiQuery } from '../../shared/api/query';
 import { templatesApi } from './api';
 
 export const templateKeys = { all: ['templates'] as const };
 
-export const useTemplates = () => useQuery({ queryKey: templateKeys.all, queryFn: templatesApi.list });
+export const useTemplates = () => useApiQuery(templateKeys.all, templatesApi.list, { silent: true, keepPrevious: false });
