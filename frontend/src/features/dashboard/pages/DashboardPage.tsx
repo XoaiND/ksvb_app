@@ -1,10 +1,10 @@
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Descriptions, Empty, Flex, Row, Select, Statistic, Typography, theme } from 'antd';
-import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
+import { ItemList, ItemRow } from '../../documents/components/ItemList';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useSession } from '../../../shared/auth/session';
-import { fmtDate } from '../../../shared/format';
+import { fmtDate } from '../../../shared/lib/format';
 import { ErrorNote, Loading } from '../../../shared/ui/PageState';
 import PageHeader from '../../../shared/ui/PageHeader';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';

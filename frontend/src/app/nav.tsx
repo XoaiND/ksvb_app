@@ -8,7 +8,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
-import { ADMIN_PERMISSIONS } from '../../shared/auth/permissions';
+import { ADMIN_PERMISSIONS } from '../shared/auth/permissions';
 
 export interface NavItem {
   to: string;

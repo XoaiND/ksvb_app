@@ -2,7 +2,7 @@ import { Badge, Menu, type MenuProps } from 'antd';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { usePendingCount } from '../../features/documents/hooks';
 import { useSession } from '../../shared/auth/session';
-import { NAV } from './nav';
+import { NAV } from '../nav';
 
 /** Menu chính theo quyền; nhóm "Lưu trữ tài liệu" có 3 tab con, tab "Chờ tôi duyệt" kèm số việc chờ ký. */
 export default function SideMenu({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {

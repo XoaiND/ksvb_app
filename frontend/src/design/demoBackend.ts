@@ -468,7 +468,7 @@ const ALL_PERMS = ROLE_PERMISSIONS['role.admin'];
 
 /**
  * Trả lời một lời gọi /api (path không gồm tiền tố /api) như backend thật; lỗi theo RFC 7807 (`code`, `detail`).
- * Dùng chung cho bản preview (thay `window.fetch`), test giao diện (src/test/fakeBackend.ts) và E2E (e2e/mockApi.ts).
+ * Dùng chung cho bản preview (thay `window.fetch`), test giao diện (src/test/fakeFetch.ts) và E2E (e2e/mockApi.ts).
  * perms: quyền của người dùng giả (mặc định đủ quyền).
  */
 export function demoReply(

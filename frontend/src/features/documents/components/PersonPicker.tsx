@@ -1,7 +1,7 @@
 import { Checkbox, Empty, Flex, Input, Modal, Typography } from 'antd';
 import { useMemo, useState } from 'react';
-import type { Person } from '../api/types';
-import PersonAvatar from './PersonAvatar';
+import type { Person } from '../../../shared/api/types';
+import PersonAvatar from '../../../shared/ui/PersonAvatar';
 
 interface Props {
   title: string;

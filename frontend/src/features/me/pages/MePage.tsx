@@ -5,7 +5,7 @@ import PageHeader from '../../../shared/ui/PageHeader';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
 import { ThemeSegmented } from '../../../shared/ui/ThemeSwitch';
 
-export default function ProfilePage() {
+export default function MePage() {
   const { me } = useSession();
   const { token } = theme.useToken();
   if (!me) return null;

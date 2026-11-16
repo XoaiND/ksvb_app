@@ -1,18 +1,14 @@
 import { Card, Col, Empty, Flex, Progress, Row, Statistic, Table, Typography, theme } from 'antd';
 import type { SlowSigner } from '../../../shared/api/types';
-import { useSession } from '../../../shared/auth/session';
-import { fmtNumber } from '../../../shared/format';
+import { fmtNumber } from '../../../shared/lib/format';
 import { ErrorNote, Loading } from '../../../shared/ui/PageState';
 import PageHeader from '../../../shared/ui/PageHeader';
 import { useReport } from '../hooks';
 
 export default function ReportsPage() {
-  const { can } = useSession();
   const { token } = theme.useToken();
-  const allowed = can('report.view');
-  const { data: r, error, refetch } = useReport(allowed);
+  const { data: r, error, refetch } = useReport();
 
-  if (!allowed) return <ErrorNote error={new Error('Bạn chưa được cấp quyền xem báo cáo (report.view).')} />;
   if (error) return <ErrorNote error={error} onRetry={() => void refetch()} />;
   if (!r) return <Loading />;
 

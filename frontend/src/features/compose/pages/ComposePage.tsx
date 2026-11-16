@@ -36,12 +36,13 @@ import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-route
 import { ApiError } from '../../../shared/api/http';
 import type { Person, Priority, SaveSignRequestInput, SignMode, Template } from '../../../shared/api/types';
 import { useSession } from '../../../shared/auth/session';
-import { DOC_TYPES, fmtDate, fmtSize, PRIORITY_LABEL } from '../../../shared/format';
+import { fmtDate, fmtSize } from '../../../shared/lib/format';
+import { DOC_TYPES, PRIORITY_LABEL } from '../../documents/lib/constants';
 import { ErrorNote, Loading } from '../../../shared/ui/PageState';
 import PageHeader from '../../../shared/ui/PageHeader';
-import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
+import { ItemList, ItemRow } from '../../documents/components/ItemList';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
-import PersonPicker from '../../../shared/ui/PersonPicker';
+import PersonPicker from '../../documents/components/PersonPicker';
 import { documentsApi } from '../../documents/api';
 import { useRefreshDocuments, useSignRequest, useUsers } from '../../documents/hooks';
 import Paper from '../../documents/components/Paper';
@@ -104,7 +105,6 @@ function FileItem({ f, onRemove }: { f: FileRow; onRemove: () => void }) {
 
 /** Tải dữ liệu (bản nháp cần sửa, người dùng, mẫu) bằng TanStack Query rồi dựng form với dữ liệu khởi tạo. */
 export default function ComposePage() {
-  const { can } = useSession();
   const loc = useLocation();
   const [params] = useSearchParams();
   const editId = params.get('id') ? Number(params.get('id')) : undefined;
@@ -114,9 +114,6 @@ export default function ComposePage() {
   const templatesQ = useTemplates();
   const draftQ = useSignRequest(editId ?? 0, !!editId);
 
-  if (!can('document.create')) {
-    return <ErrorNote error={new Error('Bạn chưa được cấp quyền soạn và trình ký văn bản (document.create).')} />;
-  }
   const loadErr = usersQ.error ?? templatesQ.error ?? draftQ.error;
   if (loadErr) return <ErrorNote error={loadErr} />;
   if (usersQ.isPending || templatesQ.isPending || (editId && draftQ.isPending)) return <Loading />;

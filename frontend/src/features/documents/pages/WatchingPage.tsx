@@ -2,10 +2,10 @@ import { EyeOutlined } from '@ant-design/icons';
 import { Button, Card, Table, Typography, type TableColumnsType } from 'antd';
 import { useNavigate } from 'react-router';
 import type { SignRequestSummary } from '../../../shared/api/types';
-import { fmtDate } from '../../../shared/format';
+import { fmtDate } from '../../../shared/lib/format';
 import { ErrorNote } from '../../../shared/ui/PageState';
 import PageHeader from '../../../shared/ui/PageHeader';
-import { DocStatusTag } from '../../../shared/ui/StatusTag';
+import { DocStatusTag } from '../components/StatusTags';
 import { useSignRequests } from '../hooks';
 import SignProgress from '../components/SignProgress';
 

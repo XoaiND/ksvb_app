@@ -2,9 +2,116 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { baseRoutes, detail, fail, installFetch, ME, PEOPLE, summary, type Call } from '../test/fakeBackend';
+import { fail, installFetch, type Call, type Route } from '../test/fakeFetch';
+import type { Me, Person, SignRequestDetail, SignRequestSummary } from '../shared/api/types';
 import App from './App';
 import AppProviders from './AppProviders';
+
+// Dữ liệu mẫu riêng của test này (test/fakeFetch.ts không chứa dữ liệu nghiệp vụ).
+const person = (id: number, name: string, extra: Partial<Person> = {}): Person => ({
+  id,
+  fullName: name,
+  email: `u${id}@congty.vn`,
+  unitName: 'Phòng Kinh doanh',
+  jobTitle: 'Chuyên viên',
+  active: true,
+  ...extra,
+});
+
+const ME: Me = {
+  id: 4,
+  fullName: 'Phạm Minh Tuấn',
+  email: 'tuan.pm@congty.vn',
+  employeeCode: 'NV000004',
+  unitName: 'Phòng Kinh doanh',
+  jobTitle: 'Chuyên viên',
+  permissions: ['document.create', 'document.sign'],
+};
+
+const PEOPLE: Person[] = [
+  person(1, 'Nguyễn Văn An'),
+  person(2, 'Trần Thị Bích', { unitName: 'Ban Tổng giám đốc' }),
+  person(3, 'Lê Quang Cường', { unitName: 'Ban Tổng giám đốc' }),
+  person(4, 'Phạm Minh Tuấn'),
+];
+
+const summary = (id: number, title: string, extra: Partial<SignRequestSummary> = {}): SignRequestSummary => ({
+  id,
+  code: `HD-2026-000${id}`,
+  title,
+  docType: 'Hợp đồng',
+  unitName: 'Phòng Kinh doanh',
+  creator: PEOPLE[0],
+  priority: 'NORMAL',
+  mode: 'SEQ',
+  status: 'PENDING',
+  shared: false,
+  deadline: '2026-11-10',
+  submittedAt: '2026-10-30T09:00:00',
+  signedCount: 0,
+  signerCount: 2,
+  canSign: false,
+  ...extra,
+});
+
+const detail = (id: number, title: string, extra: Partial<SignRequestDetail> = {}): SignRequestDetail => ({
+  id,
+  code: `HD-2026-000${id}`,
+  title,
+  docType: 'Hợp đồng',
+  unitName: 'Phòng Kinh doanh',
+  creator: PEOPLE[0],
+  priority: 'NORMAL',
+  mode: 'SEQ',
+  status: 'PENDING',
+  shared: false,
+  deadline: '2026-11-10',
+  submittedAt: '2026-10-30T09:00:00',
+  participants: [
+    {
+      userId: 4,
+      fullName: 'Phạm Minh Tuấn',
+      jobTitle: 'Chuyên viên',
+      unitName: 'Phòng Kinh doanh',
+      orderNo: 1,
+      status: 'PENDING',
+    },
+    {
+      userId: 3,
+      fullName: 'Lê Quang Cường',
+      jobTitle: 'Tổng giám đốc',
+      unitName: 'Ban Tổng giám đốc',
+      orderNo: 2,
+      status: 'WAITING',
+    },
+  ],
+  watchers: [],
+  attachments: [{ id: 9, name: 'hop-dong.pdf', sizeBytes: 2048, signable: true, uploadedAt: '2026-10-30T09:00:00' }],
+  canSign: true,
+  canCancel: false,
+  canRecall: false,
+  canDelete: false,
+  canEdit: false,
+  versionNo: 1,
+  ...extra,
+});
+
+/** Các route dùng chung cho hầu hết trang. */
+const baseRoutes = (me: Me = ME): Record<string, Route> => ({
+  'GET /me': () => me,
+  'GET /users': () => PEOPLE,
+  'GET /templates': () => [],
+  'GET /sign-requests': (c) => ({
+    content:
+      c.query.get('scope') === 'pending'
+        ? [summary(5, 'Tờ trình ngân sách quý IV', { canSign: true })]
+        : [summary(7, 'Báo giá XYZ', { status: 'DRAFT', creator: PEOPLE[3] })],
+    page: 0,
+    size: 10,
+    totalElements: 1,
+    totalPages: 1,
+  }),
+});
 
 function renderAt(path: string) {
   return render(

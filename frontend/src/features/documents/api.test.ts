@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, request } from '../../shared/api/http';
 import { documentsApi as api } from './api';
-import { fail, installFetch } from '../../test/fakeBackend';
+import { fail, installFetch } from '../../test/fakeFetch';
 
 afterEach(() => vi.unstubAllGlobals());
 

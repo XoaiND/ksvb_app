@@ -1,9 +1,9 @@
 import { Flex, Timeline, Typography } from 'antd';
-import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
+import { ItemList, ItemRow } from './ItemList';
 import type { SignRequestDetail } from '../../../shared/api/types';
-import { fmtDate, fmtDateTime } from '../../../shared/format';
+import { fmtDate, fmtDateTime } from '../../../shared/lib/format';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
-import { SignerStatusTag } from '../../../shared/ui/StatusTag';
+import { SignerStatusTag } from './StatusTags';
 
 /** Danh sách người ký theo thứ tự, kèm trạng thái và ghi chú/lý do. */
 export function FlowList({ doc }: { doc: SignRequestDetail }) {

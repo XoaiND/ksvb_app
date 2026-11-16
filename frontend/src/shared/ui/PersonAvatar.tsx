@@ -1,5 +1,5 @@
 import { Avatar, theme } from 'antd';
-import { initials } from '../format';
+import { initials } from '../lib/format';
 
 /** Ảnh đại diện chữ cái đầu; màu chọn theo id từ bảng màu của theme (không ghi cứng). */
 export default function PersonAvatar({ id, name, size }: { id: number; name: string; size?: number }) {
