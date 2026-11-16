@@ -27,6 +27,4 @@ public class DocCounter {
         return ++lastValue;
     }
 
-    public String getCounterKey() { return counterKey; }
-    public int getLastValue() { return lastValue; }
 }

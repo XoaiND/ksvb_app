@@ -12,7 +12,7 @@ logging:
     format.console: ${KSVB_LOG_FORMAT:ecs}
     ecs.service.name: ksvb-backend
 
-# Swagger/OpenAPI tắt ở prod (ECOSYSTEM.md 12.5); chỉ bật khi thật cần: KSVB_API_DOCS_ENABLED=true
+# Swagger/OpenAPI tắt ở prod (docs/kien-truc-chuan.md); chỉ bật khi thật cần: KSVB_API_DOCS_ENABLED=true
 springdoc:
   api-docs.enabled: ${KSVB_API_DOCS_ENABLED:false}
   swagger-ui.enabled: ${KSVB_API_DOCS_ENABLED:false}

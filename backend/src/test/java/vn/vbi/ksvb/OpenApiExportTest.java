@@ -12,7 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Xuất đặc tả OpenAPI ({@code /v3/api-docs}) để frontend sinh kiểu TypeScript (ECOSYSTEM.md 12.3, 12.7).
+ * Xuất đặc tả OpenAPI ({@code /v3/api-docs}) để frontend sinh kiểu TypeScript (docs/kien-truc-chuan.md).
  * Luôn ghi {@code target/openapi.json} (CI so với bản frontend dùng); đặt
  * {@code -Dksvb.openapi.out=../frontend/openapi/openapi.json} để cập nhật bản đó, rồi {@code npm run gen:api}.
  */

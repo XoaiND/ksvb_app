@@ -12,7 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.vbi.ksvb.PostgresIntegrationTest;
 
-/** Swagger/OpenAPI: bật ở dev, mặc định tắt ở profile prod (ECOSYSTEM.md 12.5). */
+/** Swagger/OpenAPI: bật ở dev, mặc định tắt ở profile prod (docs/kien-truc-chuan.md). */
 class ApiDocsProfileTest {
 
     @Nested

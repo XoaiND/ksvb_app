@@ -15,7 +15,7 @@ import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.util.ClassUtils;
 
 /**
- * Spec OpenAPI chính xác để FE sinh kiểu TypeScript (ECOSYSTEM.md 12.3): mọi thành phần của record DTO là bắt buộc
+ * Spec OpenAPI chính xác để FE sinh kiểu TypeScript (docs/kien-truc-chuan.md): mọi thành phần của record DTO là bắt buộc
  * ({@code required}), trừ thành phần gắn {@link Nullable} (JSON bỏ trường khi null, xem
  * {@code spring.jackson.default-property-inclusion}). {@code PageResponse<T>} luôn đủ 5 trường.
  */

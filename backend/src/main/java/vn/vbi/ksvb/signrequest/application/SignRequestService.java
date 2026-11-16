@@ -81,12 +81,6 @@ public class SignRequestService {
         return toDetail(load(me, id), me);
     }
 
-    /** Dùng cho tải tệp: kiểm tra quyền xem rồi trả entity. */
-    @Transactional(readOnly = true)
-    public SignRequest loadViewable(AppUser me, Long id) {
-        return load(me, id);
-    }
-
     // ------------------------------------------------------------------ soạn thảo
 
     @Transactional

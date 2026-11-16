@@ -6,7 +6,7 @@ import vn.vbi.ksvb.user.domain.UserRole;
 
 /**
  * Quyền chi tiết = client role của client Keycloak {@code ksvb-api} (resource_access.ksvb-api.roles),
- * dùng trong {@code @PreAuthorize("hasAuthority('...')")}. Xem docs/PHAN_QUYEN.md.
+ * dùng trong {@code @PreAuthorize("hasAuthority('...')")}. Xem docs/phan-quyen.md.
  * Role tổng hợp (role.user, role.leader, role.admin) là composite role bên Keycloak, backend không kiểm tên role.
  */
 public final class Permissions {

@@ -10,7 +10,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Luật cấu trúc theo tính năng (ECOSYSTEM.md 12.1): {@code <feature>/{api,application,domain,infra}} + {@code shared/}.
+ * Luật cấu trúc theo tính năng (docs/kien-truc-chuan.md): {@code <feature>/{api,application,domain,infra}} + {@code shared/}.
  * Phụ thuộc một chiều {@code api → application → domain}, {@code infra → domain}; domain không phụ thuộc Spring.
  */
 @AnalyzeClasses(packages = "vn.vbi.ksvb", importOptions = ImportOption.DoNotIncludeTests.class)

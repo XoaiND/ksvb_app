@@ -88,7 +88,6 @@ public class AppUser extends Auditable {
     }
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public String getFullName() { return fullName; }
     public String getEmail() { return email; }
     public String getEmployeeCode() { return employeeCode; }
@@ -96,7 +95,6 @@ public class AppUser extends Auditable {
     public String getUnitName() { return unitName; }
     public String getJobTitle() { return jobTitle; }
     public UserRole getRole() { return role; }
-    public void setRole(UserRole role) { this.role = role; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 }
