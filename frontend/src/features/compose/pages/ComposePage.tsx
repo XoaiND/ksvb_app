@@ -31,10 +31,10 @@ import {
   theme,
 } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../../../shared/api/http';
-import type { Priority, SaveSignRequestInput, SignMode } from '../../../shared/api/types';
+import type { Person, Priority, SaveSignRequestInput, SignMode, Template } from '../../../shared/api/types';
 import { useSession } from '../../../shared/auth/session';
 import { DOC_TYPES, fmtDate, fmtSize, PRIORITY_LABEL } from '../../../shared/format';
 import { ErrorNote, Loading } from '../../../shared/ui/PageState';
@@ -43,7 +43,7 @@ import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
 import PersonPicker from '../../../shared/ui/PersonPicker';
 import { documentsApi } from '../../documents/api';
-import { useRefreshDocuments, useUsers } from '../../documents/hooks';
+import { useRefreshDocuments, useSignRequest, useUsers } from '../../documents/hooks';
 import Paper from '../../documents/components/Paper';
 import { templatesApi } from '../../templates/api';
 import { useTemplates } from '../../templates/hooks';
@@ -102,12 +102,9 @@ function FileItem({ f, onRemove }: { f: FileRow; onRemove: () => void }) {
   );
 }
 
+/** Tải dữ liệu (bản nháp cần sửa, người dùng, mẫu) bằng TanStack Query rồi dựng form với dữ liệu khởi tạo. */
 export default function ComposePage() {
-  const { me, can } = useSession();
-  const { message } = App.useApp();
-  const refresh = useRefreshDocuments();
-  const { token } = theme.useToken();
-  const nav = useNavigate();
+  const { can } = useSession();
   const loc = useLocation();
   const [params] = useSearchParams();
   const editId = params.get('id') ? Number(params.get('id')) : undefined;
@@ -115,21 +112,97 @@ export default function ComposePage() {
 
   const usersQ = useUsers();
   const templatesQ = useTemplates();
-  const people = useMemo(() => usersQ.data ?? [], [usersQ.data]);
-  const templates = useMemo(() => templatesQ.data ?? [], [templatesQ.data]);
+  const draftQ = useSignRequest(editId ?? 0, !!editId);
 
-  const [form, setForm] = useState<FormState>(EMPTY);
-  const [files, setFiles] = useState<FileRow[]>([]);
+  if (!can('document.create')) {
+    return <ErrorNote error={new Error('Bạn chưa được cấp quyền soạn và trình ký văn bản (document.create).')} />;
+  }
+  const loadErr = usersQ.error ?? templatesQ.error ?? draftQ.error;
+  if (loadErr) return <ErrorNote error={loadErr} />;
+  if (usersQ.isPending || templatesQ.isPending || (editId && draftQ.isPending)) return <Loading />;
+  if (draftQ.data && !draftQ.data.canEdit) return <Navigate to={`/documents/${editId}`} replace />;
+
+  const draft = draftQ.data;
+  const template = templateId ? templatesQ.data?.find((x) => x.id === templateId) : undefined;
+  let initial = EMPTY;
+  let initialFiles: FileRow[] = [];
+  if (draft) {
+    initial = {
+      title: draft.title,
+      docType: draft.docType,
+      deadline: draft.deadline ?? '',
+      priority: draft.priority,
+      description: draft.description ?? '',
+      mode: draft.mode,
+      signers: draft.participants.map((p) => p.userId),
+      watchers: draft.watchers.map((w) => w.id),
+      message: draft.message ?? '',
+      shared: draft.shared,
+    };
+    initialFiles = draft.attachments.map((a) => ({
+      key: `a${a.id}`,
+      name: a.name,
+      size: fmtSize(a.sizeBytes),
+      signable: a.signable,
+      attachmentId: a.id,
+    }));
+  } else if (template) {
+    initial = { ...EMPTY, signers: template.signers.map((s) => s.id), mode: template.mode };
+  }
+  return (
+    <ComposeForm
+      key={editId ?? 'new'}
+      editId={editId}
+      initial={initial}
+      initialFiles={initialFiles}
+      initialVersion={draft?.versionNo}
+      initialStep={!draft && template ? 2 : 1}
+      templateToUse={!draft ? template?.id : undefined}
+      people={usersQ.data ?? []}
+      templates={templatesQ.data ?? []}
+    />
+  );
+}
+
+interface FormProps {
+  editId?: number;
+  initial: FormState;
+  initialFiles: FileRow[];
+  initialVersion?: number;
+  initialStep: number;
+  /** Mẫu người nhận được chọn từ màn "Người nhận mẫu": ghi nhận đã dùng khi lưu lần đầu. */
+  templateToUse?: number;
+  people: Person[];
+  templates: Template[];
+}
+
+function ComposeForm({
+  editId,
+  initial,
+  initialFiles,
+  initialVersion,
+  initialStep,
+  templateToUse,
+  people,
+  templates,
+}: FormProps) {
+  const { me } = useSession();
+  const { message } = App.useApp();
+  const refresh = useRefreshDocuments();
+  const { token } = theme.useToken();
+  const nav = useNavigate();
+
+  const [form, setForm] = useState<FormState>(initial);
+  const [files, setFiles] = useState<FileRow[]>(initialFiles);
   const [removed, setRemoved] = useState<number[]>([]);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialStep);
   const [error, setError] = useState('');
-  const [loadError, setLoadError] = useState<Error>();
-  const [prepared, setPrepared] = useState(!editId && !templateId);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<'signers' | 'watchers' | null>(null);
   const savedId = useRef<number | undefined>(editId);
-  const savedVersion = useRef<number | undefined>(undefined); // versionNo của bản đang sửa (khoá lạc quan)
+  const savedVersion = useRef<number | undefined>(initialVersion); // versionNo của bản đang sửa (khoá lạc quan)
+  const pendingTemplate = useRef<number | undefined>(templateToUse);
   const uploaded = useRef(new Set<string>());
   const fileIn = useRef<HTMLInputElement>(null);
   const refIn = useRef<HTMLInputElement>(null);
@@ -137,58 +210,6 @@ export default function ComposePage() {
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
   const person = (id: number) => people.find((p) => p.id === id);
   const candidates = useMemo(() => people.filter((p) => p.id !== me?.id), [people, me]);
-
-  // Nạp bản nháp cần sửa, hoặc áp dụng mẫu người nhận được chọn từ màn "Người nhận mẫu".
-  useEffect(() => {
-    if (prepared) return;
-    let live = true;
-    (async () => {
-      try {
-        if (editId) {
-          const d = await documentsApi.get(editId);
-          if (!live) return;
-          if (!d.canEdit) return nav(`/documents/${editId}`, { replace: true });
-          savedVersion.current = d.versionNo;
-          setForm({
-            title: d.title,
-            docType: d.docType,
-            deadline: d.deadline ?? '',
-            priority: d.priority,
-            description: d.description ?? '',
-            mode: d.mode,
-            signers: d.participants.map((p) => p.userId),
-            watchers: d.watchers.map((w) => w.id),
-            message: d.message ?? '',
-            shared: d.shared,
-          });
-          setFiles(
-            d.attachments.map((a) => ({
-              key: `a${a.id}`,
-              name: a.name,
-              size: fmtSize(a.sizeBytes),
-              signable: a.signable,
-              attachmentId: a.id,
-            })),
-          );
-        } else if (templateId) {
-          const ts = await templatesApi.list();
-          const t = ts.find((x) => x.id === templateId);
-          if (t && live) {
-            setForm((f) => ({ ...f, signers: t.signers.map((s) => s.id), mode: t.mode }));
-            setStep(2);
-            templatesApi.use(t.id).catch(() => undefined);
-          }
-        }
-      } catch (e) {
-        if (live) setLoadError(e instanceof Error ? e : new Error(String(e)));
-      } finally {
-        if (live) setPrepared(true);
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [editId, templateId, nav, prepared]);
 
   const addFiles = (list: FileList | File[], signable: boolean) => {
     const rows: FileRow[] = [];
@@ -262,7 +283,11 @@ export default function ComposePage() {
       ? await documentsApi.update(savedId.current, { ...body, versionNo: savedVersion.current })
       : await documentsApi.create(body);
     savedVersion.current = saved.versionNo;
-    savedId.current = saved.id; // lần lưu sau (khi lỗi giữa chừng) không tạo trùng bản nháp
+    savedId.current = saved.id;
+    if (pendingTemplate.current) {
+      templatesApi.use(pendingTemplate.current).catch(() => undefined);
+      pendingTemplate.current = undefined;
+    } // lần lưu sau (khi lỗi giữa chừng) không tạo trùng bản nháp
     for (const aid of removed) await documentsApi.removeAttachment(saved.id, aid);
     setRemoved([]);
     for (const f of files.filter((x) => x.file && !uploaded.current.has(x.key))) {
@@ -311,13 +336,6 @@ export default function ComposePage() {
       setBusy(false);
     }
   };
-
-  if (!can('document.create')) {
-    return <ErrorNote error={new Error('Bạn chưa được cấp quyền soạn và trình ký văn bản (document.create).')} />;
-  }
-  const loadErr = loadError ?? usersQ.error ?? templatesQ.error;
-  if (loadErr) return <ErrorNote error={loadErr} />;
-  if (!prepared || usersQ.isPending || templatesQ.isPending) return <Loading />;
 
   const names = (ids: number[], sep: string) => ids.map((id) => person(id)?.fullName ?? `#${id}`).join(sep) || '—';
   const errorBox = error && <Alert type="error" showIcon title={error} style={{ marginTop: 12 }} />;

@@ -253,6 +253,21 @@ describe('Soạn tài liệu', () => {
     expect(created.title).toBe('Hợp đồng thử');
   });
 
+  it('sửa bản nháp gửi lại versionNo (khoá lạc quan)', async () => {
+    const draft = detail(31, 'Bản nháp cần sửa', { status: 'DRAFT', canEdit: true, canSign: false, versionNo: 3 });
+    const { calls } = installFetch({
+      ...baseRoutes(),
+      'GET /sign-requests/:id': () => draft,
+      'PUT /sign-requests/:id': () => ({ ...draft, versionNo: 4 }),
+    });
+    renderAt('/compose?id=31');
+    const title = await screen.findByLabelText(/Tiêu đề/);
+    expect(title).toHaveValue('Bản nháp cần sửa');
+    await userEvent.type(title, ' (sửa)');
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ versionNo: 3 }));
+  });
+
   it('không có quyền document.create thì báo thiếu quyền', async () => {
     installFetch(baseRoutes({ ...ME, permissions: ['document.sign'] }));
     renderAt('/compose');

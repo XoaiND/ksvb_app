@@ -25,8 +25,8 @@ export const useSignRequests = (p: ListParams) =>
     placeholderData: keepPreviousData,
   });
 
-export const useSignRequest = (id: number) =>
-  useQuery({ queryKey: [...documentKeys.all, 'detail', id], queryFn: () => documentsApi.get(id) });
+export const useSignRequest = (id: number, enabled = true) =>
+  useQuery({ queryKey: [...documentKeys.all, 'detail', id], queryFn: () => documentsApi.get(id), enabled });
 
 /** Số văn bản đang chờ tôi ký (huy hiệu ở menu, chuông). */
 export const usePendingCount = () =>

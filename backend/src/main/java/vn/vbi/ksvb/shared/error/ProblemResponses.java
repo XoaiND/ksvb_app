@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.shared.security;
+package vn.vbi.ksvb.shared.error;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,7 +10,6 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthen
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import vn.vbi.ksvb.shared.error.ApiErrorCode;
 
 /**
  * 401/403 sinh ở tầng filter (trước khi tới controller) cũng trả RFC 7807 có {@code code}, như lỗi từ controller.
