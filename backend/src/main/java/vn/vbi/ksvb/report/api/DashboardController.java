@@ -9,16 +9,16 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.vbi.ksvb.report.application.DashboardDto;
 import vn.vbi.ksvb.report.application.DashboardService;
 import vn.vbi.ksvb.report.application.ReportDto;
-import vn.vbi.ksvb.shared.security.CurrentUser;
+import vn.vbi.ksvb.user.application.CurrentAppUser;
 
 @RestController
 @RequestMapping("/api")
 public class DashboardController {
 
     private final DashboardService service;
-    private final CurrentUser currentUser;
+    private final CurrentAppUser currentUser;
 
-    public DashboardController(DashboardService service, CurrentUser currentUser) {
+    public DashboardController(DashboardService service, CurrentAppUser currentUser) {
         this.service = service;
         this.currentUser = currentUser;
     }

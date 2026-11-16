@@ -13,7 +13,7 @@ import vn.vbi.ksvb.admin.application.AdminService;
 import vn.vbi.ksvb.admin.application.AuditDto;
 import vn.vbi.ksvb.admin.application.UpdateUser;
 import vn.vbi.ksvb.shared.paging.PageResponse;
-import vn.vbi.ksvb.shared.security.CurrentUser;
+import vn.vbi.ksvb.user.application.CurrentAppUser;
 import vn.vbi.ksvb.user.application.PersonDto;
 
 /** Quản trị: quyền user.manage (người dùng) và audit.view (nhật ký). Phân role làm ở Keycloak. */
@@ -22,9 +22,9 @@ import vn.vbi.ksvb.user.application.PersonDto;
 public class AdminController {
 
     private final AdminService service;
-    private final CurrentUser currentUser;
+    private final CurrentAppUser currentUser;
 
-    public AdminController(AdminService service, CurrentUser currentUser) {
+    public AdminController(AdminService service, CurrentAppUser currentUser) {
         this.service = service;
         this.currentUser = currentUser;
     }

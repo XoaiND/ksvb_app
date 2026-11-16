@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vbi.ksvb.shared.paging.PageResponse;
-import vn.vbi.ksvb.shared.security.CurrentUser;
 import vn.vbi.ksvb.signrequest.application.ActionRequest;
 import vn.vbi.ksvb.signrequest.application.AttachmentDto;
 import vn.vbi.ksvb.signrequest.application.AttachmentService;
@@ -28,6 +27,7 @@ import vn.vbi.ksvb.signrequest.application.SignRequestDetail;
 import vn.vbi.ksvb.signrequest.application.SignRequestService;
 import vn.vbi.ksvb.signrequest.application.SignRequestSummary;
 import vn.vbi.ksvb.signrequest.domain.DocStatus;
+import vn.vbi.ksvb.user.application.CurrentAppUser;
 
 /**
  * Quyền: soạn/trình/huỷ... cần {@code document.create}; ký/từ chối cần {@code document.sign};
@@ -42,9 +42,9 @@ public class SignRequestController {
 
     private final SignRequestService service;
     private final AttachmentService attachments;
-    private final CurrentUser currentUser;
+    private final CurrentAppUser currentUser;
 
-    public SignRequestController(SignRequestService service, AttachmentService attachments, CurrentUser currentUser) {
+    public SignRequestController(SignRequestService service, AttachmentService attachments, CurrentAppUser currentUser) {
         this.service = service;
         this.attachments = attachments;
         this.currentUser = currentUser;

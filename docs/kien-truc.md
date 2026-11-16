@@ -36,7 +36,7 @@ giữ bản chụp ở bảng `app_user` (tạo ở lần đăng nhập đầu, 
 - **Thông báo**: `signrequest/domain/NotificationService` (cổng) và `signrequest/infra/LoggingNotificationService` (hiện chỉ ghi log;
   chưa gửi email).
 - **Dữ liệu mẫu**: `signrequest/infra/DemoDataLoader`, chỉ nạp vào DB trống khi `KSVB_SEED_DEMO=true` (dev).
-- **Người dùng từ token**: `user/application/UserProvisioningService` và `shared/security/CurrentUser`; chế độ dev
+- **Người dùng từ token**: `user/application/UserProvisioningService` và `user/application/CurrentAppUser` (người dùng đang thao tác; `shared/security/CurrentUser` chỉ là tên đăng nhập cho created_by); chế độ dev
   (`KSVB_SECURITY_ENABLED=false`) dùng `DevUserFilter` lấy người dùng theo header `X-User-Id`, bị chặn ở profile `prod`.
 
 ## 5. Tích hợp

@@ -4,7 +4,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vn.vbi.ksvb.shared.security.CurrentUser;
+import vn.vbi.ksvb.user.application.CurrentAppUser;
 import vn.vbi.ksvb.user.application.MeDto;
 import vn.vbi.ksvb.user.application.PersonDto;
 import vn.vbi.ksvb.user.application.UserDirectoryService;
@@ -13,10 +13,10 @@ import vn.vbi.ksvb.user.application.UserDirectoryService;
 @RequestMapping("/api")
 public class MeController {
 
-    private final CurrentUser currentUser;
+    private final CurrentAppUser currentUser;
     private final UserDirectoryService users;
 
-    public MeController(CurrentUser currentUser, UserDirectoryService users) {
+    public MeController(CurrentAppUser currentUser, UserDirectoryService users) {
         this.currentUser = currentUser;
         this.users = users;
     }

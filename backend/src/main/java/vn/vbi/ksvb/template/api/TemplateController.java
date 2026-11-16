@@ -10,19 +10,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vn.vbi.ksvb.shared.security.CurrentUser;
 import vn.vbi.ksvb.template.application.SaveTemplate;
 import vn.vbi.ksvb.template.application.TemplateDto;
 import vn.vbi.ksvb.template.application.TemplateService;
+import vn.vbi.ksvb.user.application.CurrentAppUser;
 
 @RestController
 @RequestMapping("/api/templates")
 public class TemplateController {
 
     private final TemplateService service;
-    private final CurrentUser currentUser;
+    private final CurrentAppUser currentUser;
 
-    public TemplateController(TemplateService service, CurrentUser currentUser) {
+    public TemplateController(TemplateService service, CurrentAppUser currentUser) {
         this.service = service;
         this.currentUser = currentUser;
     }
