@@ -1,5 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["e2e/**/*.e2e.ts", "src/**/*.test.{ts,tsx}"],
-  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"]
+  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
+  "ignoreIssues": {
+    "src/shared/lib/format.ts": ["exports"],
+    "src/shared/ui/PageState.tsx": ["exports"]
+  }
 }

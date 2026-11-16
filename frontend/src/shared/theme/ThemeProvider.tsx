@@ -25,8 +25,9 @@ interface ThemeCtx {
 const Ctx = createContext<ThemeCtx | null>(null);
 
 /**
- * Giao dien sang / toi / theo he thong. Luu lua chon o localStorage; che do "he thong" tu doi khi
- * thiet bi doi che do sang-toi. index.html dat san data-theme tu som de khong bi chop khi tai trang.
+ * Giao diện sáng / tối / theo hệ thống (docs/kien-truc-chuan.md mục 4). Lưu lựa chọn ở localStorage; chế độ "hệ thống"
+ * tự đổi khi thiết bị đổi chế độ sáng-tối. index.html đặt sẵn data-theme từ sớm để không bị chớp khi tải trang.
+ * Màu chỉ lấy qua theme.useToken(), không ghi cứng trong component.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(readMode);
@@ -52,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(KEY, m);
     } catch {
-      /* bo qua: che do rieng tu */
+      /* bỏ qua: chế độ riêng tư */
     }
   }, []);
 
@@ -64,7 +65,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         locale={viVN}
         theme={{
           algorithm: isDark ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
-          // xanh dam hon #1677ff de chu trang tren nut dat do tuong phan >= 4,5
+          // xanh đậm hơn #1677ff để chữ trắng trên nút đạt độ tương phản >= 4,5
           token: { colorPrimary: '#1668dc', borderRadius: 6 },
         }}
       >
@@ -76,6 +77,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme(): ThemeCtx {
   const v = useContext(Ctx);
-  if (!v) throw new Error('useTheme must be used inside ThemeProvider');
+  if (!v) throw new Error('useTheme phải nằm trong ThemeProvider');
   return v;
 }
