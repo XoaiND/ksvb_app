@@ -23,7 +23,7 @@ giữ bản chụp ở bảng `app_user` (tạo ở lần đăng nhập đầu, 
 |---|---|---|---|---|
 | Văn bản trình ký (soạn, trình, ký, từ chối, huỷ, thu hồi, nhắc, tệp đính kèm, theo dõi) | `signrequest` | `documents`, `compose` | `document.create`, `document.sign`, `document.view.all` | `sign_request`, `participant`, `sign_request_watcher`, `attachment`, `doc_counter` |
 | Mẫu người nhận | `template` | `templates` | đã đăng nhập (mẫu của mình) | `sign_template`, `sign_template_signer` |
-| Người dùng | `user` | `profile`, `auth` | đã đăng nhập | `app_user` |
+| Người dùng | `user` | `me` (+ `app/pages/LoginPage`) | đã đăng nhập | `app_user` |
 | Dashboard, Báo cáo | `report` | `dashboard`, `reports` | đã đăng nhập / `report.view` | đọc `sign_request`, `participant` |
 | Quản trị (người dùng, nhật ký) | `admin` | `admin` | `user.manage`, `audit.view` (`config.manage`, `cert.manage`: chưa có chức năng) | `app_user`, `audit_log` |
 
