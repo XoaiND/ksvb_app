@@ -40,6 +40,7 @@ class SignRequestServiceTest extends PostgresIntegrationTest {
 
     @Autowired JdbcTemplate jdbc;
     @Autowired SignRequestService service;
+    @Autowired vn.vbi.ksvb.signrequest.infra.DocNumberGenerator numbers;
     @Autowired UserRepository users;
     @Autowired TransactionTemplate tx;
     @Autowired OutboxRepository outbox;
@@ -137,12 +138,12 @@ class SignRequestServiceTest extends PostgresIntegrationTest {
         LocalDate day = LocalDate.of(2031, 1, 1);
         int n = 8;
         // tạo sẵn bộ đếm: lần tạo đầu tiên (chưa có dòng để khoá) không thuộc phạm vi test này
-        String first = tx.execute(s -> service.nextCode("Công văn", day));
+        String first = tx.execute(s -> numbers.next("Công văn", day));
         ExecutorService pool = Executors.newFixedThreadPool(n);
         try {
             List<Callable<String>> jobs = new ArrayList<>();
             for (int i = 0; i < n; i++) {
-                jobs.add(() -> tx.execute(s -> service.nextCode("Công văn", day)));
+                jobs.add(() -> tx.execute(s -> numbers.next("Công văn", day)));
             }
             List<String> codes = new ArrayList<>();
             for (Future<String> f : pool.invokeAll(jobs)) {

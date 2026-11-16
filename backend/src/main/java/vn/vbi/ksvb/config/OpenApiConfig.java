@@ -16,8 +16,8 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Spec OpenAPI chính xác để FE sinh kiểu TypeScript (docs/kien-truc-chuan.md): mọi thành phần của record DTO là bắt buộc
- * ({@code required}), trừ thành phần gắn {@link Nullable} (JSON bỏ trường khi null, xem
- * {@code spring.jackson.default-property-inclusion}). {@code PageResponse<T>} luôn đủ 5 trường.
+ * ({@code required}), trừ thành phần gắn {@link Nullable} (JSON luôn trả đủ trường, giá trị null vẫn có mặt;
+ * {@code Nullable} đánh dấu nullable). {@code PageResponse<T>} luôn đủ 5 trường.
  */
 @Configuration
 public class OpenApiConfig {

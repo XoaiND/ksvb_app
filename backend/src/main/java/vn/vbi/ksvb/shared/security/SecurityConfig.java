@@ -26,7 +26,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vn.vbi.ksvb.config.KsvbProperties;
 import vn.vbi.ksvb.shared.error.ProblemResponses;
-import vn.vbi.ksvb.user.infra.UserRepository;
 
 /**
  * Giống HRM: xác thực bằng JWT Keycloak, quyền lấy từ resource_access.{roleClient}.roles và giữ nguyên tên
@@ -38,7 +37,7 @@ import vn.vbi.ksvb.user.infra.UserRepository;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, KsvbProperties props, UserRepository users, Environment env)
+    SecurityFilterChain filterChain(HttpSecurity http, KsvbProperties props, DevUserResolver devUsers, Environment env)
             throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -50,7 +49,7 @@ public class SecurityConfig {
                         "ksvb.security.enabled=false không được phép khi chạy profile prod (bỏ qua đăng nhập)");
             }
             http.authorizeHttpRequests(a -> a.anyRequest().permitAll())
-                    .addFilterAfter(new DevUserFilter(users), AnonymousAuthenticationFilter.class);
+                    .addFilterAfter(new DevUserFilter(devUsers), AnonymousAuthenticationFilter.class);
             return http.build();
         }
 

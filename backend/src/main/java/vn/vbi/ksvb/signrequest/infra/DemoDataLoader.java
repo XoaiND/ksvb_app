@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.config;
+package vn.vbi.ksvb.signrequest.infra;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -11,11 +11,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import vn.vbi.ksvb.signrequest.application.SignRequestService;
 import vn.vbi.ksvb.signrequest.domain.Priority;
 import vn.vbi.ksvb.signrequest.domain.SignMode;
 import vn.vbi.ksvb.signrequest.domain.SignRequest;
-import vn.vbi.ksvb.signrequest.infra.SignRequestRepository;
 import vn.vbi.ksvb.template.domain.SignTemplate;
 import vn.vbi.ksvb.template.infra.TemplateRepository;
 import vn.vbi.ksvb.user.domain.AppUser;
@@ -34,14 +32,14 @@ public class DemoDataLoader implements ApplicationRunner {
     private final UserRepository users;
     private final SignRequestRepository requests;
     private final TemplateRepository templates;
-    private final SignRequestService service;
+    private final DocNumberGenerator numbers;
 
     public DemoDataLoader(UserRepository users, SignRequestRepository requests, TemplateRepository templates,
-                          SignRequestService service) {
+                          DocNumberGenerator numbers) {
         this.users = users;
         this.requests = requests;
         this.templates = templates;
-        this.service = service;
+        this.numbers = numbers;
     }
 
     @Override
@@ -125,7 +123,7 @@ public class DemoDataLoader implements ApplicationRunner {
         r.replaceSigners(signerIds.stream().map(id -> users.findById(id).orElseThrow()).toList());
         r.replaceWatchers(watcherIds.stream().collect(Collectors.toCollection(LinkedHashSet::new)));
         r.addAttachment(title + ".pdf", "demo.pdf", 1024, true, now);
-        r.submit(creatorId, service.nextCode(type, LocalDate.now()), now);
+        r.submit(creatorId, numbers.next(type, LocalDate.now()), now);
         return requests.save(r);
     }
 }

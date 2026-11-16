@@ -25,11 +25,10 @@ import vn.vbi.ksvb.shared.error.ConflictException;
 import vn.vbi.ksvb.shared.error.NotFoundException;
 import vn.vbi.ksvb.shared.outbox.OutboxService;
 import vn.vbi.ksvb.shared.paging.PageResponse;
-import vn.vbi.ksvb.signrequest.domain.DocCounter;
 import vn.vbi.ksvb.signrequest.domain.DocStatus;
 import vn.vbi.ksvb.signrequest.domain.NotificationService;
 import vn.vbi.ksvb.signrequest.domain.SignRequest;
-import vn.vbi.ksvb.signrequest.infra.DocCounterRepository;
+import vn.vbi.ksvb.signrequest.infra.DocNumberGenerator;
 import vn.vbi.ksvb.signrequest.infra.SignRequestRepository;
 import vn.vbi.ksvb.signrequest.infra.SignRequestSpecs;
 import vn.vbi.ksvb.signrequest.infra.SignRequestSpecs.Scope;
@@ -42,22 +41,18 @@ public class SignRequestService {
 
     private static final Logger log = LoggerFactory.getLogger(SignRequestService.class);
 
-    private static final Map<String, String> CODE_PREFIX = Map.of(
-            "Hợp đồng", "HD", "Quyết định", "QD", "Tờ trình", "TT",
-            "Báo giá", "BG", "Biên bản", "BB", "Công văn", "CV");
-
     private final SignRequestRepository requests;
     private final UserRepository users;
-    private final DocCounterRepository counters;
+    private final DocNumberGenerator numbers;
     private final AuditService audit;
     private final NotificationService notifier;
     private final OutboxService outbox;
 
-    public SignRequestService(SignRequestRepository requests, UserRepository users, DocCounterRepository counters,
+    public SignRequestService(SignRequestRepository requests, UserRepository users, DocNumberGenerator numbers,
                               AuditService audit, NotificationService notifier, OutboxService outbox) {
         this.requests = requests;
         this.users = users;
-        this.counters = counters;
+        this.numbers = numbers;
         this.audit = audit;
         this.notifier = notifier;
         this.outbox = outbox;
@@ -134,7 +129,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         LocalDateTime now = LocalDateTime.now();
         requireCreator(me, r, "Chỉ người tạo mới được trình ký");
-        r.submit(me.getId(), r.getCode() == null ? nextCode(r.getDocType(), now.toLocalDate()) : null, now);
+        r.submit(me.getId(), r.getCode() == null ? numbers.next(r.getDocType(), now.toLocalDate()) : null, now);
         audit.log(me.getId(), "SUBMIT", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SUBMITTED, me.getId());
         safeNotify(() -> notifier.notifyTurn(r));
@@ -222,15 +217,6 @@ public class SignRequestService {
 
     // ------------------------------------------------------------------ số hiệu
 
-    /** Sinh số hiệu dạng HD-2026-0143; khoá ghi bộ đếm để hai lần trình đồng thời không trùng số. */
-    public String nextCode(String docType, LocalDate today) {
-        String prefix = CODE_PREFIX.getOrDefault(docType, "VB");
-        String key = prefix + "-" + today.getYear();
-        DocCounter c = counters.findForUpdate(key).orElseGet(() -> counters.saveAndFlush(new DocCounter(key)));
-        int n = c.next();
-        counters.save(c);
-        return String.format("%s-%04d", key, n);
-    }
 
     // ------------------------------------------------------------------ nội bộ & ánh xạ
 

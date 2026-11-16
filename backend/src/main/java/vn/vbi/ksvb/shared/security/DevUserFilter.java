@@ -5,51 +5,37 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import vn.vbi.ksvb.user.domain.AppUser;
-import vn.vbi.ksvb.user.infra.UserRepository;
 
 /**
- * CHỈ dùng khi ksvb.security.enabled=false (dev/test): coi người có id ở header {@code X-User-Id}
- * (mặc định {@value #DEFAULT_USER}) là người đang đăng nhập, quyền suy từ app_user.role.
+ * CHỈ dùng khi security.enabled=false (dev/test): coi người xác định bởi {@link DevUserResolver} từ header
+ * {@value #HEADER} là người đang đăng nhập.
  */
 public class DevUserFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-User-Id";
-    public static final long DEFAULT_USER = 4L;
 
-    private final UserRepository users;
+    private final DevUserResolver resolver;
 
-    public DevUserFilter(UserRepository users) {
-        this.users = users;
+    public DevUserFilter(DevUserResolver resolver) {
+        this.resolver = resolver;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
-        long id = DEFAULT_USER;
-        String h = req.getHeader(HEADER);
-        if (h != null && !h.isBlank()) {
-            try {
-                id = Long.parseLong(h.trim());
-            } catch (NumberFormatException e) {
-                res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Header X-User-Id không hợp lệ");
-                return;
-            }
-        }
-        Optional<AppUser> user = users.findById(id);
-        if (user.isPresent() && user.get().isActive()) {
-            List<GrantedAuthority> authorities = Permissions.forDevRole(user.get().getRole()).stream()
-                    .map(p -> (GrantedAuthority) new SimpleGrantedAuthority(p)).toList();
-            SecurityContextHolder.getContext().setAuthentication(
-                    UsernamePasswordAuthenticationToken.authenticated(user.get().getEmail(), null, authorities));
+        try {
+            resolver.resolve(req.getHeader(HEADER)).ifPresent(DevUserFilter::authenticate);
+        } catch (IllegalArgumentException e) {
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Header " + HEADER + " không hợp lệ");
+            return;
         }
         chain.doFilter(req, res);
+    }
+
+    private static void authenticate(Authentication auth) {
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }
