@@ -35,7 +35,7 @@ giữ bản chụp ở bảng `app_user` (tạo ở lần đăng nhập đầu, 
 - **Hết hạn ký**: `signrequest/application/ExpiryJob` chạy hằng ngày, chuyển văn bản quá hạn sang `EXPIRED`.
 - **Thông báo**: `signrequest/domain/NotificationService` (cổng) và `signrequest/infra/LoggingNotificationService` (hiện chỉ ghi log;
   chưa gửi email).
-- **Dữ liệu mẫu**: `config/DemoDataLoader`, chỉ nạp vào DB trống khi `KSVB_SEED_DEMO=true` (dev).
+- **Dữ liệu mẫu**: `signrequest/infra/DemoDataLoader`, chỉ nạp vào DB trống khi `KSVB_SEED_DEMO=true` (dev).
 - **Người dùng từ token**: `user/application/UserProvisioningService` và `shared/security/CurrentUser`; chế độ dev
   (`KSVB_SECURITY_ENABLED=false`) dùng `DevUserFilter` lấy người dùng theo header `X-User-Id`, bị chặn ở profile `prod`.
 
@@ -48,7 +48,7 @@ giữ bản chụp ở bảng `app_user` (tạo ở lần đăng nhập đầu, 
 | Email | `NotificationService` | chưa làm (chỉ ghi log) |
 
 ## 6. Sự kiện outbox
-Bảng `ksvb_outbox`, aggregate `SIGN_REQUEST`. Chưa có worker đẩy đi (ADR 0002).
+Bảng `ksvb_outbox`, aggregate `SIGN_REQUEST`. Chưa có worker đẩy đi (ADR 0001).
 
 | Loại sự kiện | Khi nào | Ai tiêu thụ |
 |---|---|---|
@@ -62,6 +62,4 @@ Mỗi thao tác ghi cũng ghi một dòng `audit_log` (cùng transaction; thao t
 ## 7. Quyết định riêng (ADR)
 | ADR | Nội dung |
 |---|---|
-| `adr/0001-dto-nam-o-application.md` | DTO record nằm ở `application/` (đã thành chuẩn chung) |
-| `adr/0002-outbox-chua-co-worker.md` | Outbox ghi trước, worker đẩy đi làm sau |
-| `adr/0003-typescript-6.md` | Dùng TypeScript 6.0, chưa lên 7 (đã thành chuẩn chung) |
+| `adr/0001-outbox-chua-co-worker.md` | Outbox ghi trước, worker đẩy đi làm sau |
