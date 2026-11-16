@@ -1,4 +1,4 @@
-import { download, put, request } from '../../shared/api/http';
+import { download, put, request, seg } from '../../shared/api/http';
 import type {
   Attachment,
   ListParams,
@@ -27,21 +27,23 @@ export const documentsApi = {
         size: p.size ?? 10,
       },
     }),
-  get: (id: number) => request<SignRequestDetail>('GET', `${SR}/${id}`),
+  get: (id: number) => request<SignRequestDetail>('GET', `${SR}/${seg(id)}`),
   create: (b: SaveSignRequestInput) => request<SignRequestDetail>('POST', SR, { body: b }),
-  update: (id: number, b: SaveSignRequestInput) => put<SignRequestDetail>(`${SR}/${id}`, b),
-  remove: (id: number) => request<void>('DELETE', `${SR}/${id}`),
-  submit: (id: number) => request<SignRequestDetail>('POST', `${SR}/${id}/submit`),
-  sign: (id: number, n?: string) => request<SignRequestDetail>('POST', `${SR}/${id}/sign`, { body: note(n) }),
-  reject: (id: number, reason: string) => request<SignRequestDetail>('POST', `${SR}/${id}/reject`, { body: note(reason) }),
-  cancel: (id: number, reason: string) => request<SignRequestDetail>('POST', `${SR}/${id}/cancel`, { body: note(reason) }),
-  recall: (id: number) => request<SignRequestDetail>('POST', `${SR}/${id}/recall`),
-  remind: (id: number) => request<void>('POST', `${SR}/${id}/remind`),
+  update: (id: number, b: SaveSignRequestInput) => put<SignRequestDetail>(`${SR}/${seg(id)}`, b),
+  remove: (id: number) => request<void>('DELETE', `${SR}/${seg(id)}`),
+  submit: (id: number) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/submit`),
+  sign: (id: number, n?: string) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/sign`, { body: note(n) }),
+  reject: (id: number, reason: string) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/reject`, { body: note(reason) }),
+  cancel: (id: number, reason: string) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/cancel`, { body: note(reason) }),
+  recall: (id: number) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/recall`),
+  remind: (id: number) => request<void>('POST', `${SR}/${seg(id)}/remind`),
   uploadAttachment: (id: number, file: File, signable: boolean) => {
     const form = new FormData();
     form.append('file', file);
-    return request<Attachment>('POST', `${SR}/${id}/attachments`, { form, query: { signable } });
+    return request<Attachment>('POST', `${SR}/${seg(id)}/attachments`, { form, query: { signable } });
   },
-  removeAttachment: (id: number, attachmentId: number) => request<void>('DELETE', `${SR}/${id}/attachments/${attachmentId}`),
-  downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>) => download(`${SR}/${id}/attachments/${a.id}`, a.name),
+  removeAttachment: (id: number, attachmentId: number) =>
+    request<void>('DELETE', `${SR}/${seg(id)}/attachments/${seg(attachmentId)}`),
+  downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>) =>
+    download(`${SR}/${seg(id)}/attachments/${seg(a.id)}`, a.name),
 };

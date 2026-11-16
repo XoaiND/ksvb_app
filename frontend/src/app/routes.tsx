@@ -1,52 +1,45 @@
-import { lazy, type ComponentType, type ReactElement } from 'react';
-import { ADMIN_PERMISSIONS } from '../shared/auth/permissions';
+import { Navigate } from 'react-router';
+import type { ReactNode } from 'react';
+import AdminPage from '../features/admin/pages/AdminPage';
+import ComposePage from '../features/compose/pages/ComposePage';
+import DashboardPage from '../features/dashboard/pages/DashboardPage';
+import DocumentDetailPage from '../features/documents/pages/DocumentDetailPage';
+import DocumentsPage from '../features/documents/pages/DocumentsPage';
+import WatchingPage from '../features/documents/pages/WatchingPage';
+import MePage from '../features/me/pages/MePage';
+import ReportsPage from '../features/reports/pages/ReportsPage';
+import TemplatesPage from '../features/templates/pages/TemplatesPage';
+import type { Permission } from '../shared/api/types';
+import { useNav } from './layout/useNav';
 
-// Mỗi màn một chunk riêng: tải lần đầu nhẹ hơn (Ant Design khá nặng).
-const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'));
-const ComposePage = lazy(() => import('../features/compose/pages/ComposePage'));
-const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
-const DocumentDetailPage = lazy(() => import('../features/documents/pages/DocumentDetailPage'));
-const DocumentsPage = lazy(() => import('../features/documents/pages/DocumentsPage'));
-const WatchingPage = lazy(() => import('../features/documents/pages/WatchingPage'));
-const MePage = lazy(() => import('../features/me/pages/MePage'));
-const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'));
-const TemplatesPage = lazy(() => import('../features/templates/pages/TemplatesPage'));
-
-export interface AppRoute {
-  path: string;
-  element: ReactElement;
-  /** Quyền cần có để vào trang (bất kỳ một). Không khai báo = ai đăng nhập cũng vào được. */
-  needs?: string[];
-  /** Thông báo khi thiếu quyền. */
-  denied?: string;
+/**
+ * RIÊNG của app: danh sách route và quyền cần có (App.tsx chỉ đọc `ROUTES`). Thiếu `perm` = chỉ cần đăng nhập;
+ * thiếu quyền thì chuyển về trang mặc định.
+ */
+export interface RouteDef {
+  path?: string;
+  index?: boolean;
+  perm?: Permission;
+  element: ReactNode;
+  children?: RouteDef[];
 }
 
-const page = (C: ComponentType): ReactElement => <C />;
+/** Chuyển về trang mặc định theo quyền. */
+function Home() {
+  return <Navigate to={useNav().home} replace />;
+}
 
-export const ROUTES: AppRoute[] = [
-  { path: '/dashboard', element: page(DashboardPage) },
-  { path: '/documents', element: page(DocumentsPage) },
-  { path: '/documents/:id', element: page(DocumentDetailPage) },
+export const ROUTES: RouteDef[] = [
+  { path: '/dashboard', element: <DashboardPage /> },
+  { path: '/documents', element: <DocumentsPage /> },
+  { path: '/documents/:id', element: <DocumentDetailPage /> },
   { path: '/documents/:id/sign', element: <DocumentDetailPage signMode /> },
-  {
-    path: '/compose',
-    element: page(ComposePage),
-    needs: ['document.create'],
-    denied: 'Bạn chưa được cấp quyền soạn và trình ký văn bản (document.create).',
-  },
-  { path: '/watching', element: page(WatchingPage) },
-  {
-    path: '/templates',
-    element: page(TemplatesPage),
-    needs: ['document.create'],
-    denied: 'Bạn chưa được cấp quyền dùng người nhận mẫu (document.create).',
-  },
-  {
-    path: '/reports',
-    element: page(ReportsPage),
-    needs: ['report.view'],
-    denied: 'Bạn chưa được cấp quyền xem báo cáo (report.view).',
-  },
-  { path: '/admin', element: page(AdminPage), needs: ADMIN_PERMISSIONS, denied: 'Bạn không có quyền truy cập trang Quản trị.' },
-  { path: '/profile', element: page(MePage) },
+  { path: '/compose', perm: 'document.create', element: <ComposePage /> },
+  { path: '/watching', element: <WatchingPage /> },
+  { path: '/templates', perm: 'document.create', element: <TemplatesPage /> },
+  { path: '/reports', perm: 'report.view', element: <ReportsPage /> },
+  // Quản trị mở bằng bất kỳ một trong nhiều quyền: AdminPage tự báo khi thiếu quyền (RouteDef.perm chỉ nhận một quyền)
+  { path: '/admin', element: <AdminPage /> },
+  { path: '/profile', element: <MePage /> },
+  { path: '*', element: <Home /> },
 ];

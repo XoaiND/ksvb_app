@@ -329,21 +329,21 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         SaveSignRequest: {
-            title: string;
-            docType: string;
-            description?: string;
-            /** @enum {string} */
-            priority?: "NORMAL" | "HIGH" | "URGENT";
-            /** @enum {string} */
-            mode?: "SEQ" | "PAR";
+            title?: string;
+            docType?: string;
+            description?: string | null;
+            /** @enum {string|null} */
+            priority?: "NORMAL" | "HIGH" | "URGENT" | null;
+            /** @enum {string|null} */
+            mode?: "SEQ" | "PAR" | null;
             /** Format: date */
-            deadline?: string;
-            message?: string;
-            shared?: boolean;
-            signerIds: number[];
-            watcherIds?: number[];
+            deadline?: string | null;
+            message?: string | null;
+            shared?: boolean | null;
+            signerIds?: number[];
+            watcherIds?: number[] | null;
             /** Format: int32 */
-            versionNo?: number;
+            versionNo?: number | null;
         };
         AttachmentDto: {
             /** Format: int64 */
@@ -359,37 +359,37 @@ export interface components {
             /** Format: int64 */
             userId: number;
             fullName: string;
-            jobTitle?: string;
-            unitName?: string;
+            jobTitle?: string | null;
+            unitName?: string | null;
             /** Format: int32 */
             orderNo: number;
             /** @enum {string} */
             status: "WAITING" | "PENDING" | "SIGNED" | "REJECTED";
             /** Format: date-time */
-            signedAt?: string;
-            note?: string;
+            signedAt?: string | null;
+            note?: string | null;
         };
         PersonDto: {
             /** Format: int64 */
             id: number;
             fullName: string;
             email: string;
-            unitName?: string;
-            jobTitle?: string;
-            /** @enum {string} */
-            role?: "USER" | "ADMIN";
+            unitName?: string | null;
+            jobTitle?: string | null;
+            /** @enum {string|null} */
+            role?: "USER" | "ADMIN" | null;
             active: boolean;
         };
         SignRequestDetail: {
             /** Format: int64 */
             id: number;
-            code?: string;
+            code?: string | null;
             title: string;
             docType: string;
-            unitName?: string;
-            description?: string;
-            message?: string;
-            cancellationReason?: string;
+            unitName?: string | null;
+            description?: string | null;
+            message?: string | null;
+            cancellationReason?: string | null;
             creator: components["schemas"]["PersonDto"];
             /** @enum {string} */
             priority: "NORMAL" | "HIGH" | "URGENT";
@@ -399,11 +399,11 @@ export interface components {
             status: "DRAFT" | "PENDING" | "COMPLETED" | "REJECTED" | "CANCELLED" | "EXPIRED";
             shared: boolean;
             /** Format: date */
-            deadline?: string;
+            deadline?: string | null;
             /** Format: date-time */
-            submittedAt?: string;
+            submittedAt?: string | null;
             /** Format: date-time */
-            completedAt?: string;
+            completedAt?: string | null;
             participants: components["schemas"]["ParticipantDto"][];
             watchers: components["schemas"]["PersonDto"][];
             attachments: components["schemas"]["AttachmentDto"][];
@@ -416,10 +416,10 @@ export interface components {
             versionNo: number;
         };
         SaveTemplate: {
-            name: string;
+            name?: string;
             /** @enum {string} */
-            mode: "SEQ" | "PAR";
-            signerIds: number[];
+            mode?: "SEQ" | "PAR";
+            signerIds?: number[];
         };
         TemplateDto: {
             /** Format: int64 */
@@ -432,10 +432,10 @@ export interface components {
             signers: components["schemas"]["PersonDto"][];
         };
         ActionRequest: {
-            note?: string;
+            note?: string | null;
         };
         UpdateUser: {
-            active?: boolean;
+            active?: boolean | null;
         };
         PageResponseSignRequestSummary: {
             content: components["schemas"]["SignRequestSummary"][];
@@ -451,10 +451,10 @@ export interface components {
         SignRequestSummary: {
             /** Format: int64 */
             id: number;
-            code?: string;
+            code?: string | null;
             title: string;
             docType: string;
-            unitName?: string;
+            unitName?: string | null;
             creator: components["schemas"]["PersonDto"];
             /** @enum {string} */
             priority: "NORMAL" | "HIGH" | "URGENT";
@@ -464,9 +464,9 @@ export interface components {
             status: "DRAFT" | "PENDING" | "COMPLETED" | "REJECTED" | "CANCELLED" | "EXPIRED";
             shared: boolean;
             /** Format: date */
-            deadline?: string;
+            deadline?: string | null;
             /** Format: date-time */
-            submittedAt?: string;
+            submittedAt?: string | null;
             /** Format: int64 */
             signedCount: number;
             /** Format: int32 */
@@ -501,9 +501,9 @@ export interface components {
             id: number;
             fullName: string;
             email: string;
-            employeeCode?: string;
-            unitName?: string;
-            jobTitle?: string;
+            employeeCode?: string | null;
+            unitName?: string | null;
+            jobTitle?: string | null;
             permissions: string[];
         };
         DashboardDto: {
@@ -533,8 +533,8 @@ export interface components {
             at: string;
             actor: string;
             action: string;
-            target?: string;
-            detail?: string;
+            target?: string | null;
+            detail?: string | null;
             result: string;
         };
         PageResponseAuditDto: {

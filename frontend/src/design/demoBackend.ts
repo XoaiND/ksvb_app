@@ -262,7 +262,12 @@ function list(q: URLSearchParams) {
 function save(d: SignRequestDetail | undefined, b: SaveSignRequestInput): SignRequestDetail {
   const base =
     d ??
-    makeDoc(++seq, b.title, b.docType, ME_ID, [], { status: 'DRAFT', code: undefined, submittedAt: undefined, attachments: [] });
+    makeDoc(++seq, b.title ?? '', b.docType ?? '', ME_ID, [], {
+      status: 'DRAFT',
+      code: undefined,
+      submittedAt: undefined,
+      attachments: [],
+    });
   Object.assign(base, {
     title: b.title,
     docType: b.docType,
@@ -273,7 +278,7 @@ function save(d: SignRequestDetail | undefined, b: SaveSignRequestInput): SignRe
     message: b.message,
     shared: !!b.shared,
     watchers: (b.watcherIds ?? []).map(person),
-    participants: b.signerIds.map((uid, i) => ({
+    participants: (b.signerIds ?? []).map((uid, i) => ({
       userId: uid,
       fullName: person(uid).fullName,
       jobTitle: person(uid).jobTitle,

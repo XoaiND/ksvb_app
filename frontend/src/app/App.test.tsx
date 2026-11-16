@@ -1,11 +1,44 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fail, installFetch, type Call, type Route } from '../test/fakeFetch';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetDemoData } from '../design/demoBackend';
+import { fail, installFetch as installBase } from '../test/fakeFetch';
 import type { Me, Person, SignRequestDetail, SignRequestSummary } from '../shared/api/types';
 import App from './App';
 import AppProviders from './AppProviders';
+
+type Call = Parameters<NonNullable<Parameters<typeof installBase>[0]>[string]>[0];
+type Reply = ReturnType<NonNullable<Parameters<typeof installBase>[0]>[string]>;
+type Route = (call: Call) => unknown;
+
+const isReply = (r: unknown): r is Reply =>
+  !!r &&
+  typeof r === 'object' &&
+  typeof (r as Reply).status === 'number' &&
+  Object.keys(r).every((k) => k === 'status' || k === 'body');
+
+/** Route trả dữ liệu thẳng (200), `{ status }` hoặc `fail(...)`; khoá có tham số `:id` khớp một đoạn đường dẫn. */
+function installFetch(routes: Record<string, Route> = {}) {
+  const keys = Object.keys(routes);
+  const wrapped = new Proxy({} as Record<string, (c: Call) => Reply>, {
+    get(_, key: string) {
+      const k =
+        key in routes
+          ? key
+          : keys.find((p) => p.includes(':') && new RegExp('^' + p.replace(/:[^/]+/g, '[^/]+') + '$').test(key));
+      if (!k) return undefined;
+      return (c: Call): Reply => {
+        const r = routes[k](c);
+        if (r === undefined) return { status: 204 };
+        return isReply(r) ? r : { status: 200, body: r };
+      };
+    },
+  });
+  return installBase(wrapped);
+}
+
+beforeEach(() => resetDemoData());
 
 // Dữ liệu mẫu riêng của test này (test/fakeFetch.ts không chứa dữ liệu nghiệp vụ).
 const person = (id: number, name: string, extra: Partial<Person> = {}): Person => ({
@@ -151,7 +184,7 @@ describe('Dashboard và menu', () => {
     installFetch({ ...baseRoutes(), 'GET /dashboard': () => dashboard });
     renderAt('/dashboard');
     await screen.findByText('Việc cần xử lý ngay');
-    const nav = screen.getByRole('navigation', { name: 'Menu chính' });
+    const nav = screen.getByRole('menu');
     expect(within(nav).getByText('Soạn tài liệu mới')).toBeInTheDocument();
     expect(within(nav).queryByText('Báo cáo')).not.toBeInTheDocument();
     expect(within(nav).queryByText('Quản trị')).not.toBeInTheDocument();
@@ -162,7 +195,7 @@ describe('Dashboard và menu', () => {
     installFetch({ ...baseRoutes(admin), 'GET /dashboard': () => dashboard });
     renderAt('/dashboard');
     await screen.findByText('Việc cần xử lý ngay');
-    const nav = screen.getByRole('navigation', { name: 'Menu chính' });
+    const nav = screen.getByRole('menu');
     expect(within(nav).getByText('Báo cáo')).toBeInTheDocument();
     expect(within(nav).getByText('Quản trị')).toBeInTheDocument();
   });
@@ -171,7 +204,7 @@ describe('Dashboard và menu', () => {
     installFetch({ ...baseRoutes({ ...ME, permissions: [] }), 'GET /dashboard': () => dashboard });
     renderAt('/dashboard');
     await screen.findByText('Việc cần xử lý ngay');
-    const nav = screen.getByRole('navigation', { name: 'Menu chính' });
+    const nav = screen.getByRole('menu');
     expect(within(nav).queryByText('Soạn tài liệu mới')).not.toBeInTheDocument();
     expect(screen.getByText('Chưa được cấp quyền ký')).toBeInTheDocument();
   });
@@ -375,10 +408,11 @@ describe('Soạn tài liệu', () => {
     await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ versionNo: 3 }));
   });
 
-  it('không có quyền document.create thì báo thiếu quyền', async () => {
-    installFetch(baseRoutes({ ...ME, permissions: ['document.sign'] }));
+  it('không có quyền document.create thì chuyển về trang mặc định', async () => {
+    installFetch({ ...baseRoutes({ ...ME, permissions: ['document.sign'] }), 'GET /dashboard': () => dashboard });
     renderAt('/compose');
-    expect(await screen.findByText(/chưa được cấp quyền soạn/)).toBeInTheDocument();
+    expect(await screen.findByText('Việc cần xử lý ngay')).toBeInTheDocument();
+    expect(screen.queryByText('Soạn tài liệu mới')).not.toBeInTheDocument();
   });
 });
 

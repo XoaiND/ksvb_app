@@ -27,7 +27,7 @@ const FALLBACK: Record<number, string> = {
 };
 
 /** Câu thông báo cho người dùng từ ProblemDetail (lỗi từng trường ưu tiên hơn detail). */
-export function problemMessage(data: Problem | undefined | null, status?: number, fallback = 'Lỗi không xác định'): string {
+function problemMessage(data: Problem | undefined | null, status?: number, fallback = 'Lỗi không xác định'): string {
   if (data?.errors?.length) return data.errors.map((e) => (e.field ? `${e.field}: ${e.message}` : e.message)).join('; ');
   if (data?.detail) return data.detail;
   return (status !== undefined && FALLBACK[status]) || fallback;
@@ -100,6 +100,7 @@ async function toError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, body, problemMessage(body, res.status, `Lỗi hệ thống (${res.status})`));
 }
 
+/** @public Gọi API tuỳ ý (form, phương thức khác); get/post/put/del là dạng rút gọn. */
 export async function request<T>(
   method: string,
   path: string,
@@ -117,7 +118,7 @@ export async function request<T>(
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-/** Tải tệp (có gắn token) rồi cho trình duyệt lưu. */
+/** @public Tải tệp (có gắn token) rồi cho trình duyệt lưu. */
 export async function download(path: string, fileName: string): Promise<void> {
   const res = await fetch(url(path), { headers: await headers(false) });
   if (!res.ok) throw await toError(res);
@@ -142,4 +143,5 @@ export const get = <T>(path: string, query?: object) => request<T>('GET', path, 
 export const post = <T>(path: string, body?: object) => request<T>('POST', path, { body });
 export const put = <T>(path: string, body?: object) => request<T>('PUT', path, { body });
 export const del = <T>(path: string, query?: object) => request<T>('DELETE', path, { query });
+
 export const seg = encodeURIComponent;

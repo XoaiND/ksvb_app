@@ -1,52 +1,120 @@
-import { Badge, Menu, type MenuProps } from 'antd';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { usePendingCount } from '../../features/documents/hooks';
-import { useSession } from '../../shared/auth/session';
-import { NAV } from '../nav';
+import { Button, Drawer, Layout, Menu, theme, type MenuProps } from 'antd';
+import { useLocation, useNavigate } from 'react-router';
+import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 
-/** Menu chính theo quyền; nhóm "Lưu trữ tài liệu" có 3 tab con, tab "Chờ tôi duyệt" kèm số việc chờ ký. */
-export default function SideMenu({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
-  const { can } = useSession();
-  const pending = usePendingCount();
+import { BRAND } from '../nav';
+import { useNav } from './useNav';
+
+const { Sider } = Layout;
+
+interface Props {
+  collapsed: boolean;
+  mobile: boolean;
+  drawerOpen: boolean;
+  onCloseDrawer: () => void;
+  onToggle: () => void;
+}
+
+/** Menu trái theo quyền (nav.tsx): cột thu gọn được trên màn rộng, ngăn kéo dưới 1024px. */
+export default function SideMenu({ collapsed, mobile, drawerOpen: drawer, onCloseDrawer, onToggle: toggle }: Props) {
   const nav = useNavigate();
   const loc = useLocation();
-  const [params] = useSearchParams();
+  const { token } = theme.useToken();
+  const setDrawer = (open: boolean) => {
+    if (!open) onCloseDrawer();
+  };
+  const { navItems, leaves } = useNav();
+  const selected =
+    leaves.filter((l) => loc.pathname.startsWith(l.key)).sort((a, b) => b.key.length - a.key.length)[0]?.key ??
+    leaves[0]?.key ??
+    '/profile';
 
-  const items: MenuProps['items'] = NAV.filter((n) => !n.needs || n.needs.some(can)).map((n) =>
-    n.subs
-      ? {
-          key: n.to,
-          icon: n.icon,
-          label: n.title,
-          children: n.subs.map((s) => ({
-            key: `${n.to}?tab=${s.tab}`,
-            label: (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                {s.title}
-                {s.badge && pending > 0 && <Badge count={pending} size="small" />}
-              </span>
-            ),
-          })),
-        }
-      : { key: n.to, icon: n.icon, label: n.title },
+  const menuItems: MenuProps['items'] = navItems.map((i) => ({
+    key: i.key,
+    icon: i.icon,
+    label: i.label,
+    children: i.children?.map((c) => ({ key: c.key, icon: c.icon, label: c.label })),
+  }));
+
+  const menu = (inDrawer: boolean) => (
+    <Menu
+      mode="inline"
+      inlineCollapsed={!inDrawer && collapsed}
+      selectedKeys={[selected]}
+      defaultOpenKeys={navItems.filter((i) => i.children).map((i) => i.key)}
+      items={menuItems}
+      onClick={(e) => {
+        nav(e.key);
+        setDrawer(false);
+      }}
+      style={{ flex: 1, borderInlineEnd: 0, overflowY: 'auto' }}
+    />
+  );
+  const brand = (showText: boolean) => (
+    <div
+      style={{
+        height: 56,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        fontWeight: 700,
+        fontSize: 18,
+        color: token.colorPrimary,
+      }}
+    >
+      <span style={{ fontSize: 22, display: 'flex' }}>{BRAND.icon}</span>
+      {showText && BRAND.name}
+    </div>
   );
 
-  const selected = loc.pathname === '/documents' ? `/documents?tab=${params.get('tab') ?? '1'}` : loc.pathname;
-
   return (
-    <nav aria-label="Menu chính">
-      <Menu
-        mode="inline"
-        inlineCollapsed={collapsed}
-        selectedKeys={[selected]}
-        defaultOpenKeys={['/documents']}
-        items={items}
-        style={{ borderInlineEnd: 0 }}
-        onClick={({ key }) => {
-          onNavigate?.();
-          nav(key);
-        }}
-      />
-    </nav>
+    <>
+      {!mobile && (
+        <Sider
+          collapsed={collapsed}
+          collapsedWidth={64}
+          width={220}
+          theme="light"
+          trigger={null}
+          style={{
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            position: 'sticky',
+            top: 0,
+            height: '100vh',
+            overflow: 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {brand(!collapsed)}
+            {menu(false)}
+            <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, padding: 8 }}>
+              <Button
+                type="text"
+                block
+                onClick={toggle}
+                title={collapsed ? 'Mở rộng menu' : 'Thu gọn menu (phím [)'}
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                style={{ color: token.colorTextSecondary }}
+              >
+                {!collapsed && 'Thu gọn menu'}
+              </Button>
+            </div>
+          </div>
+        </Sider>
+      )}
+      {mobile && (
+        <Drawer
+          placement="left"
+          open={drawer}
+          onClose={() => setDrawer(false)}
+          size={260}
+          styles={{ body: { padding: 0 } }}
+          title={brand(true)}
+        >
+          {menu(true)}
+        </Drawer>
+      )}
+    </>
   );
 }

@@ -3,12 +3,16 @@ import { ApiError, request } from '../../shared/api/http';
 import { documentsApi as api } from './api';
 import { fail, installFetch } from '../../test/fakeFetch';
 
+const ok = (body: unknown) => ({ status: 200, body });
+const headersOf = (fn: { mock: { calls: unknown[][] } }, i = 0) =>
+  (fn.mock.calls[i][1] as RequestInit).headers as Record<string, string>;
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('lớp gọi API', () => {
   it('gắn tiền tố /api, tham số truy vấn và header người dùng dev', async () => {
-    const { calls } = installFetch({
-      'GET /sign-requests': () => ({ content: [], page: 2, size: 10, totalElements: 0, totalPages: 0 }),
+    const { calls, fn } = installFetch({
+      'GET /sign-requests': () => ok({ content: [], page: 2, size: 10, totalElements: 0, totalPages: 0 }),
     });
     await api.list({ scope: 'mine', q: 'abc', status: 'DRAFT', page: 2 });
     const c = calls[0];
@@ -17,12 +21,12 @@ describe('lớp gọi API', () => {
     expect(c.query.get('q')).toBe('abc');
     expect(c.query.get('status')).toBe('DRAFT');
     expect(c.query.get('page')).toBe('2');
-    expect(c.headers['X-User-Id']).toBe('1'); // VITE_AUTH_DISABLED=true trong test, VITE_DEV_USER_ID mặc định 1
+    expect(headersOf(fn)['X-User-Id']).toBe('1'); // VITE_AUTH_DISABLED=true trong test, VITE_DEV_USER_ID mặc định 1
   });
 
   it('bỏ qua tham số rỗng', async () => {
     const { calls } = installFetch({
-      'GET /sign-requests': () => ({ content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }),
+      'GET /sign-requests': () => ok({ content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }),
     });
     await api.list({ scope: 'pending', q: '', docType: '', status: '' });
     expect(calls[0].query.has('q')).toBe(false);
@@ -31,14 +35,14 @@ describe('lớp gọi API', () => {
   });
 
   it('gửi JSON cho POST', async () => {
-    const { calls } = installFetch({ 'POST /sign-requests/:id/reject': () => ({}) });
+    const { calls, fn } = installFetch({ 'POST /sign-requests/7/reject': () => ok({}) });
     await api.reject(7, 'Thiếu phụ lục');
     expect(calls[0].body).toEqual({ note: 'Thiếu phụ lục' });
-    expect(calls[0].headers['Content-Type']).toBe('application/json');
+    expect(headersOf(fn)['Content-Type']).toBe('application/json');
   });
 
   it('204 không có nội dung trả về undefined', async () => {
-    installFetch({ 'DELETE /sign-requests/:id': () => undefined });
+    installFetch({ 'DELETE /sign-requests/3': () => ({ status: 204 }) });
     await expect(api.remove(3)).resolves.toBeUndefined();
   });
 
@@ -68,7 +72,7 @@ describe('lớp gọi API', () => {
   });
 
   it('403 không có nội dung thì dùng thông điệp mặc định tiếng Việt', async () => {
-    installFetch({ 'GET /reports/summary': () => ({ __status: 403 }) });
+    installFetch({ 'GET /reports/summary': () => ({ status: 403 }) });
     await expect(request('GET', '/reports/summary')).rejects.toMatchObject({
       status: 403,
       message: 'Không có quyền thực hiện',

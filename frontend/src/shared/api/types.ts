@@ -7,6 +7,9 @@ import type { components } from './schema';
 type S = components['schemas'];
 
 export type Me = S['MeDto'];
+
+/** Mã quyền (client role của ksvb-api), vd. `document.create`. */
+export type Permission = string;
 export type Person = S['PersonDto'];
 export type Participant = S['ParticipantDto'];
 export type Attachment = S['AttachmentDto'];

@@ -1,6 +1,6 @@
 import { errorMessage } from '../../../shared/api/http';
-import { SettingOutlined } from '@ant-design/icons';
-import { App, Card, Empty, Flex, Switch, Table, Tabs, Tag, Typography } from 'antd';
+import { SafetyOutlined, SettingOutlined } from '@ant-design/icons';
+import { App, Card, Empty, Flex, Result, Switch, Table, Tabs, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import type { AuditEntry, Person } from '../../../shared/api/types';
 import { useSession } from '../../../shared/auth/session';
@@ -132,6 +132,14 @@ function NotReady({ what }: { what: string }) {
 export default function AdminPage() {
   const { can } = useSession();
   const visible = TABS.filter(([, , perm]) => can(perm));
+
+  if (visible.length === 0) {
+    return (
+      <Card>
+        <Result icon={<SafetyOutlined />} title="Bạn không có quyền truy cập trang Quản trị." />
+      </Card>
+    );
+  }
 
   const content: Record<AdminTab, React.ReactNode> = {
     users: <UsersTab />,

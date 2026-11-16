@@ -1,33 +1,19 @@
-import { lazy, Suspense, type ReactElement } from 'react';
-import { Navigate, Route, Routes } from 'react-router';
+import type { ReactNode } from 'react';
+import { Navigate, useRoutes, type RouteObject } from 'react-router';
 import { useSession } from '../shared/auth/session';
-import { ErrorNote, Loading } from '../shared/ui/PageState';
 import AppLayout from './layout/AppLayout';
-import { ROUTES, type AppRoute } from './routes';
+import { useNav } from './layout/useNav';
+import { ROUTES, type RouteDef } from './routes';
 
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-
-/** Kiểm quyền vào trang theo `needs` của route; thiếu quyền thì báo `denied`. */
-function Guard({ route }: { route: AppRoute }): ReactElement {
-  const { can } = useSession();
-  if (route.needs && !route.needs.some(can)) {
-    return <ErrorNote error={new Error(route.denied ?? 'Bạn chưa được cấp quyền vào trang này.')} />;
-  }
-  return route.element;
-}
-
+/** Route của ứng dụng (trong khung AppLayout); route cần quyền tự chuyển về trang mặc định khi thiếu quyền. */
 export default function App() {
-  return (
-    <Suspense fallback={<Loading />}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<AppLayout />}>
-          {ROUTES.map((r) => (
-            <Route key={r.path} path={r.path} element={<Guard route={r} />} />
-          ))}
-        </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </Suspense>
-  );
+  const { can } = useSession();
+  const { home } = useNav();
+  const guard = (perm: string | undefined, el: ReactNode) => (!perm || can(perm) ? el : <Navigate to={home} replace />);
+  const toObject = (r: RouteDef): RouteObject =>
+    r.index
+      ? { index: true, element: guard(r.perm, r.element) }
+      : { path: r.path, element: guard(r.perm, r.element), children: r.children?.map(toObject) };
+
+  return <AppLayout>{useRoutes(ROUTES.map(toObject))}</AppLayout>;
 }
