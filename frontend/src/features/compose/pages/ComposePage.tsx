@@ -1,4 +1,4 @@
-import { errorMessage } from '../../../shared/api/http';
+import { errorMessage, isNetworkError } from '../../../shared/api/http';
 import {
   ArrowDownOutlined,
   ArrowLeftOutlined,
@@ -301,7 +301,7 @@ function ComposeForm({
       setError(e.errors.map((x) => x.message).join('; '));
       message.error('Dữ liệu chưa hợp lệ');
     } else {
-      message.error(errorMessage(e));
+      message.error(isNetworkError(e) ? 'Không kết nối được máy chủ, hãy thử lại.' : errorMessage(e));
     }
   };
 

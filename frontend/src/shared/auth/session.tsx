@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { errorMessage, get, isNetworkError } from '../api/http';
+import { errorMessage, get } from '../api/http';
 import type { Me } from '../api/types';
 import { hasPermission } from './permissions';
 
@@ -18,11 +18,7 @@ const Ctx = createContext<Session | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const meQuery = useQuery({ queryKey: ['me'], queryFn: () => get<Me>('/me'), staleTime: Infinity });
   const me = meQuery.data ?? null;
-  const meError = meQuery.error
-    ? isNetworkError(meQuery.error)
-      ? 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.'
-      : errorMessage(meQuery.error)
-    : null;
+  const meError = meQuery.error ? errorMessage(meQuery.error) : null;
   const value = useMemo<Session>(() => ({ me, meError, can: (p) => hasPermission(me, p) }), [me, meError]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
