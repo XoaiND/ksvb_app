@@ -1,13 +1,13 @@
 # Cơ sở dữ liệu – KSVB
 
 PostgreSQL, database `ksvb`, schema `ksvb` (đặt bằng `KSVB_DB_SCHEMA`), tài khoản ứng dụng `ksvb_app`.
-Chỉ hỗ trợ PostgreSQL (không còn H2). Test chạy PostgreSQL 17 trong Testcontainers, schema `public` (riêng `PostgresIntegrationTest` dùng `ksvb`).
+Chỉ hỗ trợ PostgreSQL (không còn H2). Test chạy PostgreSQL 17 trong Testcontainers, schema `public` (riêng `SignRequestServiceTest` dùng `ksvb`).
 
 ## Flyway
 - Migration ở `backend/src/main/resources/db/migration`. Hiện có `V1__init.sql` (toàn bộ schema ban đầu), `V2__audit_result_outbox.sql` (cột `audit_log.result`, bảng `ksvb_outbox`), `V3__auditable_columns.sql` (cột audit chung + trigger `trg_touch_row`, xem dưới).
 - Backend tự chạy Flyway khi khởi động; JPA ở chế độ `ddl-auto: validate` (lệch entity với bảng thì không khởi động).
 - Thay đổi schema = thêm `V4__...sql`, **không sửa** file đã áp dụng (kể cả chú thích: đổi checksum làm Flyway báo lỗi).
-- Cột audit chung (ECOSYSTEM.md 12.7, giống HRM) trên `sign_request`, `sign_template`, `app_user`: `version_no` (khoá lạc quan, mặc định 1), `created_at` (DB sinh `now()`), `created_by` (người tạo, mặc định `SYSTEM`), `updated_at` + `version_no` do trigger `trg_touch_row()` cập nhật khi UPDATE, `updated_by`. Entity kế thừa `shared/audit/Auditable`.
+- Cột audit chung (docs/kien-truc-chuan.md mục 3.1, giống HRM) trên `sign_request`, `sign_template`, `app_user`: `version_no` (khoá lạc quan, mặc định 1), `created_at` (DB sinh `now()`), `created_by` (người tạo, mặc định `SYSTEM`), `updated_at` + `version_no` do trigger `trg_touch_row()` cập nhật khi UPDATE, `updated_by`. Entity kế thừa `shared/audit/Auditable`.
 - Tạo DB lần đầu: `backend/db/setup-postgres.sql` (role `ksvb_app`, database `ksvb`, schema `ksvb`, `search_path`), chạy bằng tài khoản quản trị Postgres.
 
 ## ERD
@@ -35,7 +35,7 @@ erDiagram
     }
     sign_request {
         bigint id PK
-        bigint version
+        integer version_no
         varchar code
         varchar title
         varchar doc_type
@@ -92,7 +92,7 @@ erDiagram
 | Bảng | Nội dung | Ghi chú |
 |---|---|---|
 | `app_user` | Người dùng KSVB, tạo tự động từ token ở lần đăng nhập đầu | `email` duy nhất; `role` (`USER`/`ADMIN`) chỉ dùng ở chế độ dev; `active=false` thì không chọn vào luồng ký |
-| `sign_request` | Văn bản trình ký | `status`: DRAFT/PENDING/COMPLETED/REJECTED/CANCELLED/EXPIRED; `mode`: SEQ/PAR; `priority`: NORMAL/HIGH/URGENT; `code` sinh khi trình ký lần đầu; `version` khoá lạc quan; `message` lời nhắn, `cancellation_reason` lý do huỷ |
+| `sign_request` | Văn bản trình ký | `status`: DRAFT/PENDING/COMPLETED/REJECTED/CANCELLED/EXPIRED; `mode`: SEQ/PAR; `priority`: NORMAL/HIGH/URGENT; `code` sinh khi trình ký lần đầu; `version_no` khoá lạc quan (cột `Auditable`); `message` lời nhắn, `cancellation_reason` lý do huỷ |
 | `participant` | Người ký theo thứ tự (`order_no`) | `status`: WAITING/PENDING/SIGNED/REJECTED; `note` ghi chú khi ký hoặc lý do từ chối; xoá theo văn bản (cascade) |
 | `sign_request_watcher` | Người theo dõi (chỉ xem) | khoá chính (văn bản, người) |
 | `attachment` | Tệp đính kèm | `signable` = tệp cần ký (PDF); `stored_name` UUID trên đĩa (`ksvb.storage.path`) |

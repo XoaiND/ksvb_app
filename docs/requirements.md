@@ -9,7 +9,7 @@ Người soạn trình văn bản (tệp PDF cần ký, kèm tệp tham khảo) 
 - Quản lý nhân viên, đơn vị, chức danh: thuộc HRM. KSVB lấy thông tin người dùng từ token Keycloak.
 - Đăng nhập, mật khẩu, gán quyền: thuộc Keycloak (realm `dev`, client `ksvb-web` / `ksvb-api`).
 
-## Vai trò (role tổng hợp trong Keycloak, chi tiết ở `PHAN_QUYEN.md`)
+## Vai trò (role tổng hợp trong Keycloak, chi tiết ở `phan-quyen.md`)
 | Vai trò | Được làm |
 |---|---|
 | `role.user` – Người dùng | Soạn, trình ký, ký/từ chối khi đến lượt |

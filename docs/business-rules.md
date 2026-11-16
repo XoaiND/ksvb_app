@@ -1,6 +1,6 @@
 # Quy tắc nghiệp vụ – KSVB
 
-Theo code `backend` (luật nằm trong `signrequest/domain/SignRequest.java`, `signrequest/application/SignRequestService.java`). Vi phạm trả lỗi tiếng Việt: 400 dữ liệu sai, 403 không có quyền, 409 sai trạng thái.
+Theo code `backend` (luật nằm trong `signrequest/domain/SignRequest.java`, `signrequest/application/SignRequestService.java`). Vi phạm trả lỗi RFC 7807 (`code`, `reason`, `detail` tiếng Việt): 400 `VALIDATION_ERROR` dữ liệu gửi lên sai (thiếu trường), 401 `UNAUTHORIZED` chưa đăng nhập, 403 `FORBIDDEN` không có quyền với văn bản, 404 `NOT_FOUND`, 409 `CONFLICT` sai trạng thái / chưa đến lượt / lệch `versionNo`, 422 `BUSINESS_RULE` vi phạm luật nghiệp vụ (`reason` ví dụ `NO_SIGNER`, `NO_PDF`, `REASON_REQUIRED`, `DUPLICATE_SIGNER`, `INVALID_PDF`, `INVALID_SCOPE`).
 
 ## Trạng thái văn bản
 
@@ -24,6 +24,7 @@ Trạng thái từng người ký: `WAITING` (chưa đến lượt), `PENDING` (
 
 ## Soạn và sửa
 - Chỉ **người tạo** sửa được, và chỉ khi còn **nháp**. Sửa = thay toàn bộ thông tin, luồng ký, người theo dõi.
+- Khoá lạc quan: `GET` trả `versionNo`; `PUT` phải gửi lại `versionNo` của bản đang sửa, lệch (người khác vừa sửa) → 409 `CONCURRENT_UPDATE`.
 - Một người không được xuất hiện hai lần trong luồng ký. Người ký, người theo dõi phải là tài khoản đang hoạt động.
 - Xoá chỉ áp dụng cho nháp của chính mình.
 - Mặc định: ưu tiên `NORMAL` (Thường), cách ký `SEQ` (Tuần tự). Ưu tiên: Thường / Cao / Khẩn.

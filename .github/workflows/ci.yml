@@ -1,4 +1,4 @@
-# CI của KSVB (ECOSYSTEM.md 12.4, 12.7 – cùng cấu trúc với HRM): build + test BE (cả test tích hợp Testcontainers),
+# CI (docs/kien-truc-chuan.md mục 6): build + test BE (cả test tích hợp Testcontainers),
 # lint + format + build + test FE, E2E, kiểm lỗ hổng dependency (npm audit; Maven/npm/Actions qua Dependabot).
 # CI xanh mới merge.
 name: CI
@@ -80,6 +80,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Build bản preview (test E2E mở docs/design/index.html bằng file://)
+        run: npm run build:design
       - run: npm run e2e
       - uses: actions/upload-artifact@v4
         if: failure()

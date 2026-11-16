@@ -31,7 +31,7 @@ fi
 role_exists() { "$KCADM" get "clients/$API_ID/roles/$1" -r "$REALM" --fields name >/dev/null 2>&1; }
 role_id() { "$KCADM" get "clients/$API_ID/roles/$1" -r "$REALM" --fields id --format csv --noquotes; }
 
-# ---- 2) Quyền chi tiết (khớp backend/.../shared/security/Permissions.java và docs/PHAN_QUYEN.md)
+# ---- 2) Quyền chi tiết (khớp backend/.../shared/security/Permissions.java và docs/phan-quyen.md)
 for r in document.create document.sign document.view.all report.view user.manage audit.view config.manage cert.manage system.monitor; do
   role_exists "$r" || { "$KCADM" create "clients/$API_ID/roles" -r "$REALM" -s "name=$r"; echo "đã tạo quyền $r"; }
 done

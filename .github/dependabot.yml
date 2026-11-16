@@ -1,4 +1,4 @@
-# Cập nhật và cảnh báo lỗ hổng dependency (ECOSYSTEM.md 12.4). Cần bật "Dependabot alerts" trong Settings của repo.
+# Cập nhật và cảnh báo lỗ hổng dependency (docs/kien-truc-chuan.md). Cần bật "Dependabot alerts" trong Settings của repo.
 version: 2
 updates:
   - package-ecosystem: maven
