@@ -1,6 +1,6 @@
 import { DoubleLeftOutlined, DoubleRightOutlined, SafetyCertificateOutlined, StopOutlined } from '@ant-design/icons';
 import { Button, Drawer, Flex, Layout, Result, Spin, Typography, theme } from 'antd';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { login, logout } from '../../shared/auth/keycloak';
 import { useSession } from '../../shared/auth/session';
@@ -9,6 +9,7 @@ import Topbar from './Topbar';
 
 /** Dưới 1024px menu trái thành ngăn kéo (ECOSYSTEM.md 8). */
 const NARROW = 1024;
+const SIDEBAR_KEY = 'ksvb.sidebar.collapsed';
 
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => window.innerWidth < NARROW);
@@ -31,7 +32,24 @@ function Brand({ collapsed }: { collapsed: boolean }) {
 }
 
 export default function AppLayout() {
-  const { me, meError, collapsed, toggleSidebar } = useSession();
+  const { me, meError } = useSession();
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebar = useCallback(() => {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(SIDEBAR_KEY, c ? '0' : '1');
+      } catch {
+        /* bỏ qua: trình duyệt chặn lưu */
+      }
+      return !c;
+    });
+  }, []);
   const narrow = useNarrow();
   const [drawer, setDrawer] = useState(false);
   const loc = useLocation();
@@ -123,7 +141,7 @@ export default function AppLayout() {
         </Drawer>
       )}
       <Layout>
-        <Topbar narrow={narrow} onMenu={() => setDrawer((o) => !o)} />
+        <Topbar narrow={narrow} collapsed={collapsed} onToggle={toggleSidebar} onMenu={() => setDrawer((o) => !o)} />
         <Layout.Content style={{ padding: narrow ? 12 : 24 }}>
           <main>
             <Outlet />

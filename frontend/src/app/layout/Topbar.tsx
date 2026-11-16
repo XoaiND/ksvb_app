@@ -9,14 +9,21 @@ import {
 import { Badge, Button, Dropdown, Flex, Input, Layout, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { usePendingCount } from '../../features/documents/api';
+import { usePendingCount } from '../../features/documents/hooks';
 import { logout } from '../../shared/auth/keycloak';
 import { useSession } from '../../shared/auth/session';
 import PersonAvatar from '../../shared/ui/PersonAvatar';
 import { ThemeMenu } from '../../shared/ui/ThemeSwitch';
 
-export default function Topbar({ narrow, onMenu }: { narrow: boolean; onMenu: () => void }) {
-  const { me, collapsed, toggleSidebar } = useSession();
+interface Props {
+  narrow: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
+  onMenu: () => void;
+}
+
+export default function Topbar({ narrow, collapsed, onToggle, onMenu }: Props) {
+  const { me } = useSession();
   const pending = usePendingCount();
   const nav = useNavigate();
   const [q, setQ] = useState('');
@@ -48,7 +55,7 @@ export default function Topbar({ narrow, onMenu }: { narrow: boolean; onMenu: ()
           aria-label="Thu gọn / mở rộng menu"
           title="Thu gọn / mở rộng menu  ( phím [ )"
           icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={toggleSidebar}
+          onClick={onToggle}
         />
       )}
       {!narrow && (

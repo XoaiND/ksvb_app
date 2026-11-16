@@ -1,3 +1,4 @@
+import { errorMessage } from '../../../shared/api/http';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -26,14 +27,15 @@ import {
 } from 'antd';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import type { DocStatus, Scope, SignRequestSummary } from '../../shared/api/types';
-import { useSession } from '../../shared/auth/session';
-import { DOC_STATUS, DOC_TYPES, errorText, fmtDate } from '../../shared/format';
-import { ErrorNote } from '../../shared/ui/PageState';
-import PageHeader from '../../shared/ui/PageHeader';
-import { DocStatusTag, SignerStatusTag } from '../../shared/ui/StatusTag';
-import { documentsApi, usePendingCount, useRefreshDocuments, useSignRequests, useUnits } from './api';
-import SignProgress from './components/SignProgress';
+import type { DocStatus, Scope, SignRequestSummary } from '../../../shared/api/types';
+import { useSession } from '../../../shared/auth/session';
+import { DOC_STATUS, DOC_TYPES, fmtDate } from '../../../shared/format';
+import { ErrorNote } from '../../../shared/ui/PageState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import { DocStatusTag, SignerStatusTag } from '../../../shared/ui/StatusTag';
+import { documentsApi } from '../api';
+import { usePendingCount, useRefreshDocuments, useSignRequests, useUnits } from '../hooks';
+import SignProgress from '../components/SignProgress';
 
 type Tab = '1' | '2' | '3';
 const TABS: [Tab, string, Scope][] = [
@@ -95,7 +97,7 @@ export default function DocumentsPage() {
       closeConfirm();
       refresh();
     } catch (e) {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     } finally {
       setBusy(false);
     }

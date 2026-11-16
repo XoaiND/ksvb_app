@@ -4,11 +4,12 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: {
-    // Lõi Ant Design dùng chung mọi màn ~600 kB (gzip ~190 kB); các màn đã tách chunk lười trong app/App.tsx.
-    chunkSizeWarningLimit: 700,
+    // Lõi Ant Design dùng chung mọi màn ~600 kB (gzip ~190 kB).
+    chunkSizeWarningLimit: 2000,
   },
   server: {
-    port: 5174, // 5173 = HRM frontend dev; strictPort: bận thì báo lỗi, không tự nhảy sang cổng của app khác
+    // Mỗi app một cổng dev riêng (docs/kien-truc-chuan.md mục 7); strictPort: bận thì báo lỗi, không tự nhảy cổng.
+    port: 5174,
     strictPort: true,
     // Mặc định chỉ nghe 127.0.0.1 (không dùng "localhost": Node mới phân giải thành ::1 nên `tailscale serve` vào 127.0.0.1 sẽ lỗi).
     // Xem trên thiết bị khác: `tailscale serve` (HTTPS, vẫn host mặc định) + VITE_ALLOWED_HOSTS=<tên MagicDNS>;

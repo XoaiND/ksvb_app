@@ -2,8 +2,7 @@ import { ConfigProvider, Flex, Typography, theme } from 'antd';
 import type { Participant } from '../../../shared/api/types';
 import { fmtDateTime } from '../../../shared/format';
 
-export type PaperParticipant = Pick<Participant, 'userId' | 'fullName' | 'status'> &
-  Partial<Pick<Participant, 'jobTitle' | 'signedAt'>>;
+type PaperParticipant = Pick<Participant, 'userId' | 'fullName' | 'status'> & Partial<Pick<Participant, 'jobTitle' | 'signedAt'>>;
 
 interface Props {
   title: string;

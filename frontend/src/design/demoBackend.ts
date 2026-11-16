@@ -106,6 +106,7 @@ function makeDoc(
     canRecall: false,
     canDelete: false,
     canEdit: false,
+    versionNo: 1,
     ...extra,
   };
 }
@@ -313,11 +314,11 @@ function setStatus(d: SignRequestDetail, s: DocStatus) {
   if (s === 'COMPLETED') d.completedAt = now();
 }
 
-function route(method: string, path: string, q: URLSearchParams, body: unknown, role: string): unknown {
+function route(method: string, path: string, q: URLSearchParams, body: unknown, perms: string[]): unknown {
   const m = (re: RegExp) => path.match(re);
   let r: RegExpMatchArray | null;
   if (method === 'GET' && path === '/me') {
-    const me: Me = { ...person(ME_ID), employeeCode: 'NV000004', permissions: ROLES[role]?.perms ?? [] };
+    const me: Me = { ...person(ME_ID), employeeCode: 'NV000004', permissions: perms };
     return me;
   }
   if (method === 'GET' && path === '/users') return PEOPLE.filter((x) => x.active);
@@ -341,7 +342,12 @@ function route(method: string, path: string, q: URLSearchParams, body: unknown, 
   if ((r = m(/^\/sign-requests\/(\d+)$/))) {
     const d = find(Number(r[1]));
     if (method === 'GET') return view(d);
-    if (method === 'PUT') return save(d, body as SaveSignRequestInput);
+    if (method === 'PUT') {
+      const b = body as SaveSignRequestInput;
+      if (b.versionNo !== d.versionNo) throw new Problem(409, 'CONFLICT', 'Văn bản đã bị người khác thay đổi, vui lòng tải lại');
+      d.versionNo++;
+      return save(d, b);
+    }
     if (method === 'DELETE') {
       DOCS.splice(DOCS.indexOf(d), 1);
       log('DELETE', `SignRequest#${d.id}`, d.title);
@@ -423,7 +429,7 @@ function route(method: string, path: string, q: URLSearchParams, body: unknown, 
     return TEMPLATES[i];
   }
   const need = (perm: string) => {
-    if (!(ROLES[role]?.perms ?? []).includes(perm)) {
+    if (!perms.includes(perm)) {
       log('BLOCKED', `${method} /api${path}`, 'FORBIDDEN: Thiếu quyền', 'ERROR');
       throw new Problem(403, 'FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này.');
     }
@@ -475,35 +481,43 @@ export function resetDemoData() {
   log('CREATE', 'SignRequest#106', 'Biên bản họp giao ban tháng 10');
 }
 
+export interface DemoReply {
+  status: number;
+  body?: unknown;
+}
+
+const ALL_PERMS = ROLES['role.admin'].perms;
+
 /**
- * Xử lý một lời gọi `/api/...` (path không gồm `/api`) như ksvb-backend: trả `{status, body}`, lỗi theo RFC 7807
- * (`code`, `detail`). Dùng cho bản preview (thay `window.fetch`) và E2E (Playwright `page.route`, e2e/mockApi.ts).
+ * Trả lời một lời gọi /api (path không gồm tiền tố /api) như backend thật; lỗi theo RFC 7807 (`code`, `detail`).
+ * Dùng chung cho bản preview (thay `window.fetch`), test giao diện (src/test/fakeBackend.ts) và E2E (e2e/mockApi.ts).
+ * perms: quyền của người dùng giả (mặc định đủ quyền).
  */
-export function handleDemoApi(
+export function demoReply(
   method: string,
   path: string,
-  query: URLSearchParams,
-  body: unknown,
-  role: string,
-): { status: number; body?: unknown } {
+  perms: string[] = ALL_PERMS,
+  query: URLSearchParams = new URLSearchParams(),
+  body?: unknown,
+): DemoReply {
   try {
-    const out = route(method.toUpperCase(), path, query, body, role);
+    const out = route(method.toUpperCase(), path, query, body, perms);
     return out === undefined ? { status: 204 } : { status: 200, body: out };
   } catch (e) {
-    const pr = e instanceof Problem ? e : new Problem(500, 'INTERNAL_ERROR', 'Lỗi hệ thống, vui lòng thử lại sau.');
+    const pr = e instanceof Problem ? e : new Problem(500, 'INTERNAL_ERROR', 'Lỗi hệ thống, vui lòng thử lại sau');
     return { status: pr.status, body: { status: pr.status, code: pr.code, detail: pr.detail } };
   }
 }
 
-/** Thay `window.fetch` cho mọi lời gọi `/api/...`. */
-export function installDemoBackend(role: string) {
+/** Thay `window.fetch` cho mọi lời gọi `/api/...` (bản preview). */
+export function installDemoBackend(perms: string[] = ALL_PERMS) {
   resetDemoData();
   window.fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const u = new URL(String(input), window.location.href.startsWith('http') ? window.location.href : 'http://preview.local/');
     const path = u.pathname.replace(/^.*\/api/, '');
     const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
     await new Promise((res) => setTimeout(res, 150));
-    const r = handleDemoApi(init.method ?? 'GET', path, u.searchParams, body, role);
+    const r = demoReply(init.method ?? 'GET', path, perms, u.searchParams, body);
     return r.body === undefined ? new Response(null, { status: r.status }) : Response.json(r.body, { status: r.status });
   };
 }

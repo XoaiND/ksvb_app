@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { demoReply, resetDemoData } from '../design/demoBackend';
 import type { Me, Person, SignRequestDetail, SignRequestSummary } from '../shared/api/types';
 
 export interface Call {
@@ -12,14 +13,20 @@ export interface Call {
 type Reply = unknown | { __status: number; body?: unknown };
 type Route = (call: Call) => Reply;
 
-export const fail = (status: number, detail: string, code?: string, errors?: { field: string; message: string }[]): Reply => ({
+/** Phản hồi lỗi RFC 7807 cho `routes`. */
+export const fail = (status: number, code: string, detail: string, errors?: { field: string; message: string }[]): Reply => ({
   __status: status,
   body: { status, detail, code, errors },
 });
 
-/** Thay `fetch` bằng bộ định tuyến giả. Khoá route: "GET /sign-requests" (không gồm tiền tố /api và query). */
-export function installFetch(routes: Record<string, Route>) {
+/**
+ * Thay `fetch` bằng backend giả cho test giao diện: `routes` đè từng lời gọi theo khoá "METHOD /đường-dẫn" (không gồm
+ * /api và query; `:id` khớp một đoạn); lời gọi không có trong `routes` trả dữ liệu mẫu của src/design/demoBackend.ts
+ * (dùng chung với bản preview và E2E).
+ */
+export function installFetch(routes: Record<string, Route> = {}) {
   const calls: Call[] = [];
+  resetDemoData();
   const fn = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const u = new URL(String(input), 'http://localhost');
     const path = u.pathname.replace(/^\/api/, '');
@@ -30,8 +37,14 @@ export function installFetch(routes: Record<string, Route>) {
     const call: Call = { method, path, query: u.searchParams, body, headers: (init.headers ?? {}) as Record<string, string> };
     calls.push(call);
 
-    const route = routes[`${method} ${path}`] ?? Object.entries(routes).find(([k]) => matches(k, `${method} ${path}`))?.[1];
-    const reply = route ? route(call) : fail(404, `Chưa giả lập ${method} ${path}`);
+    const key = `${method} ${path}`;
+    const route: Route | undefined = key in routes ? routes[key] : Object.entries(routes).find(([k]) => matches(k, key))?.[1];
+    let reply: Reply;
+    if (route) reply = route(call);
+    else {
+      const demo = demoReply(method, path, undefined, u.searchParams, body);
+      reply = { __status: demo.status, body: demo.body };
+    }
     const r = reply as { __status?: number; body?: unknown };
     const status = r && typeof r === 'object' && '__status' in r ? r.__status! : 200;
     const payload = r && typeof r === 'object' && '__status' in r ? r.body : reply;
@@ -51,7 +64,7 @@ function matches(pattern: string, actual: string): boolean {
   return re.test(actual);
 }
 
-export const person = (id: number, name: string, extra: Partial<Person> = {}): Person => ({
+const person = (id: number, name: string, extra: Partial<Person> = {}): Person => ({
   id,
   fullName: name,
   email: `u${id}@congty.vn`,
@@ -135,6 +148,7 @@ export const detail = (id: number, title: string, extra: Partial<SignRequestDeta
   canRecall: false,
   canDelete: false,
   canEdit: false,
+  versionNo: 1,
   ...extra,
 });
 

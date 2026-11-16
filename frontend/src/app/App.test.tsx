@@ -70,7 +70,7 @@ describe('Dashboard và menu', () => {
   });
 
   it('lỗi tải /me hiện màn thông báo', async () => {
-    installFetch({ ...baseRoutes(), 'GET /me': () => fail(403, 'Tài khoản chưa được cấp quyền trong hệ thống') });
+    installFetch({ ...baseRoutes(), 'GET /me': () => fail(403, 'FORBIDDEN', 'Tài khoản chưa được cấp quyền trong hệ thống') });
     renderAt('/dashboard');
     expect(await screen.findByText('Không vào được hệ thống')).toBeInTheDocument();
     expect(screen.getByText('Tài khoản chưa được cấp quyền trong hệ thống')).toBeInTheDocument();
@@ -169,7 +169,8 @@ describe('Ký và từ chối', () => {
   it('lỗi từ backend (409 chưa đến lượt) hiện nguyên thông điệp', async () => {
     installFetch({
       ...signRoutes(),
-      'POST /sign-requests/:id/sign': () => fail(409, 'Quy trình đang ở bước trước. Hệ thống sẽ thông báo khi đến lượt của bạn.'),
+      'POST /sign-requests/:id/sign': () =>
+        fail(409, 'CONFLICT', 'Quy trình đang ở bước trước. Hệ thống sẽ thông báo khi đến lượt của bạn.'),
     });
     renderAt('/documents/5/sign');
     await screen.findByText(/Ký: Tờ trình/);

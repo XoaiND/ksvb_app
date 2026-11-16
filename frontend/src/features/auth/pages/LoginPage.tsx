@@ -1,8 +1,8 @@
 import { SafetyCertificateOutlined } from '@ant-design/icons';
 import { Button, Card, Flex, Typography, theme } from 'antd';
 import { useNavigate } from 'react-router';
-import { authDisabled, login } from '../../shared/auth/keycloak';
-import { ThemeSegmented } from '../../shared/ui/ThemeSwitch';
+import { authDisabled, login } from '../../../shared/auth/keycloak';
+import { ThemeSegmented } from '../../../shared/ui/ThemeSwitch';
 
 export default function LoginPage() {
   const nav = useNavigate();

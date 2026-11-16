@@ -1,20 +1,21 @@
 import Keycloak from 'keycloak-js';
 
 /**
- * Đăng nhập Keycloak (Authorization Code + PKCE), cùng realm `dev` với HRM.
- * VITE_AUTH_DISABLED=true: bỏ qua đăng nhập (chỉ dev/test, backend phải chạy ksvb.security.enabled=false)
- * và gửi header X-User-Id = VITE_DEV_USER_ID (mặc định 4).
+ * Đăng nhập Keycloak (Authorization Code + PKCE), realm `dev` dùng chung mọi app (docs/kien-truc-chuan.md mục 4).
+ * VITE_AUTH_DISABLED=true: bỏ qua đăng nhập (chỉ dev/test; backend phải tắt bảo mật) và gửi header
+ * X-User-Id = VITE_DEV_USER_ID để backend biết người đang thao tác.
  */
 export const authDisabled = import.meta.env.VITE_AUTH_DISABLED === 'true';
 
-export const devUserId: string = import.meta.env.VITE_DEV_USER_ID ?? '4';
+/** Người dùng giả khi tắt đăng nhập (header X-User-Id). */
+export const devUserId: string = import.meta.env.VITE_DEV_USER_ID ?? '1';
 
 const keycloak = authDisabled
   ? null
   : new Keycloak({
-      url: import.meta.env.VITE_KEYCLOAK_URL ?? 'http://localhost:8080',
-      realm: import.meta.env.VITE_KEYCLOAK_REALM ?? 'dev',
-      clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? 'ksvb-web',
+      url: import.meta.env.VITE_KEYCLOAK_URL,
+      realm: import.meta.env.VITE_KEYCLOAK_REALM,
+      clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
     });
 
 /** Đăng nhập (chuyển sang Keycloak nếu chưa có phiên). Trả về false nếu không đăng nhập được. */

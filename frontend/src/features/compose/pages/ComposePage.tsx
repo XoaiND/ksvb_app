@@ -1,3 +1,4 @@
+import { errorMessage } from '../../../shared/api/http';
 import {
   ArrowDownOutlined,
   ArrowLeftOutlined,
@@ -32,18 +33,20 @@ import {
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { ApiError } from '../../shared/api/http';
-import type { Priority, SaveSignRequestInput, SignMode } from '../../shared/api/types';
-import { useSession } from '../../shared/auth/session';
-import { DOC_TYPES, errorText, fmtDate, fmtSize, PRIORITY_LABEL } from '../../shared/format';
-import { ErrorNote, Loading } from '../../shared/ui/PageState';
-import PageHeader from '../../shared/ui/PageHeader';
-import { ItemList, ItemRow } from '../../shared/ui/ItemList';
-import PersonAvatar from '../../shared/ui/PersonAvatar';
-import PersonPicker from '../../shared/ui/PersonPicker';
-import { documentsApi, useRefreshDocuments, useUsers } from '../documents/api';
-import Paper from '../documents/components/Paper';
-import { templatesApi, useTemplates } from '../templates/api';
+import { ApiError } from '../../../shared/api/http';
+import type { Priority, SaveSignRequestInput, SignMode } from '../../../shared/api/types';
+import { useSession } from '../../../shared/auth/session';
+import { DOC_TYPES, fmtDate, fmtSize, PRIORITY_LABEL } from '../../../shared/format';
+import { ErrorNote, Loading } from '../../../shared/ui/PageState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
+import PersonAvatar from '../../../shared/ui/PersonAvatar';
+import PersonPicker from '../../../shared/ui/PersonPicker';
+import { documentsApi } from '../../documents/api';
+import { useRefreshDocuments, useUsers } from '../../documents/hooks';
+import Paper from '../../documents/components/Paper';
+import { templatesApi } from '../../templates/api';
+import { useTemplates } from '../../templates/hooks';
 
 const STEPS = ['Thông tin & file', 'Người nhận', 'Xem lại & trình ký'];
 
@@ -126,6 +129,7 @@ export default function ComposePage() {
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<'signers' | 'watchers' | null>(null);
   const savedId = useRef<number | undefined>(editId);
+  const savedVersion = useRef<number | undefined>(undefined); // versionNo của bản đang sửa (khoá lạc quan)
   const uploaded = useRef(new Set<string>());
   const fileIn = useRef<HTMLInputElement>(null);
   const refIn = useRef<HTMLInputElement>(null);
@@ -144,6 +148,7 @@ export default function ComposePage() {
           const d = await documentsApi.get(editId);
           if (!live) return;
           if (!d.canEdit) return nav(`/documents/${editId}`, { replace: true });
+          savedVersion.current = d.versionNo;
           setForm({
             title: d.title,
             docType: d.docType,
@@ -253,7 +258,10 @@ export default function ComposePage() {
       signerIds: form.signers,
       watcherIds: form.watchers,
     };
-    const saved = savedId.current ? await documentsApi.update(savedId.current, body) : await documentsApi.create(body);
+    const saved = savedId.current
+      ? await documentsApi.update(savedId.current, { ...body, versionNo: savedVersion.current })
+      : await documentsApi.create(body);
+    savedVersion.current = saved.versionNo;
     savedId.current = saved.id; // lần lưu sau (khi lỗi giữa chừng) không tạo trùng bản nháp
     for (const aid of removed) await documentsApi.removeAttachment(saved.id, aid);
     setRemoved([]);
@@ -271,7 +279,7 @@ export default function ComposePage() {
       setError(e.errors.map((x) => x.message).join('; '));
       message.error('Dữ liệu chưa hợp lệ');
     } else {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     }
   };
 

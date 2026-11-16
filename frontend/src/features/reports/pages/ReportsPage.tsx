@@ -1,10 +1,10 @@
 import { Card, Col, Empty, Flex, Progress, Row, Statistic, Table, Typography, theme } from 'antd';
-import type { SlowSigner } from '../../shared/api/types';
-import { useSession } from '../../shared/auth/session';
-import { fmtNumber } from '../../shared/format';
-import { ErrorNote, Loading } from '../../shared/ui/PageState';
-import PageHeader from '../../shared/ui/PageHeader';
-import { useReport } from './api';
+import type { SlowSigner } from '../../../shared/api/types';
+import { useSession } from '../../../shared/auth/session';
+import { fmtNumber } from '../../../shared/format';
+import { ErrorNote, Loading } from '../../../shared/ui/PageState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import { useReport } from '../hooks';
 
 export default function ReportsPage() {
   const { can } = useSession();

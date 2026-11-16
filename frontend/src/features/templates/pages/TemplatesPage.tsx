@@ -3,17 +3,17 @@ import { App, Button, Card, Col, Empty, Flex, Form, Input, Modal, Row, Select, T
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { queryKeys } from '../../shared/api/queryClient';
-import type { SignMode } from '../../shared/api/types';
-import { useSession } from '../../shared/auth/session';
-import { errorText } from '../../shared/format';
-import { ErrorNote, Loading } from '../../shared/ui/PageState';
-import PageHeader from '../../shared/ui/PageHeader';
-import { ItemList, ItemRow } from '../../shared/ui/ItemList';
-import PersonAvatar from '../../shared/ui/PersonAvatar';
-import PersonPicker from '../../shared/ui/PersonPicker';
-import { useUsers } from '../documents/api';
-import { templatesApi, useTemplates } from './api';
+import type { SignMode } from '../../../shared/api/types';
+import { useSession } from '../../../shared/auth/session';
+import { errorMessage } from '../../../shared/api/http';
+import { ErrorNote, Loading } from '../../../shared/ui/PageState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
+import PersonAvatar from '../../../shared/ui/PersonAvatar';
+import PersonPicker from '../../../shared/ui/PersonPicker';
+import { useUsers } from '../../documents/hooks';
+import { templatesApi } from '../api';
+import { templateKeys, useTemplates } from '../hooks';
 
 export default function TemplatesPage() {
   const { me } = useSession();
@@ -36,7 +36,7 @@ export default function TemplatesPage() {
   const people = usersQ.data;
   const candidates = people.filter((p) => p.id !== me?.id);
   const nameOf = (id: number) => people.find((p) => p.id === id)?.fullName ?? `#${id}`;
-  const reload = () => void qc.invalidateQueries({ queryKey: queryKeys.templates });
+  const reload = () => void qc.invalidateQueries({ queryKey: templateKeys.all });
 
   const close = () => {
     setOpen(false);
@@ -55,7 +55,7 @@ export default function TemplatesPage() {
       close();
       reload();
     } catch (e) {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -67,7 +67,7 @@ export default function TemplatesPage() {
       message.success('Đã xoá mẫu');
       reload();
     } catch (e) {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     }
   };
 

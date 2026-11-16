@@ -1,13 +1,15 @@
+import { errorMessage } from '../../../shared/api/http';
 import { SafetyOutlined, SettingOutlined } from '@ant-design/icons';
 import { App, Card, Empty, Flex, Result, Switch, Table, Tabs, Tag, Typography } from 'antd';
 import { useState } from 'react';
-import type { AuditEntry, Person } from '../../shared/api/types';
-import { useSession } from '../../shared/auth/session';
-import { errorText, fmtDateTime } from '../../shared/format';
-import { ErrorNote } from '../../shared/ui/PageState';
-import PageHeader from '../../shared/ui/PageHeader';
-import PersonAvatar from '../../shared/ui/PersonAvatar';
-import { adminApi, useAdminUsers, useAuditLogs } from './api';
+import type { AuditEntry, Person } from '../../../shared/api/types';
+import { useSession } from '../../../shared/auth/session';
+import { fmtDateTime } from '../../../shared/format';
+import { ErrorNote } from '../../../shared/ui/PageState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import PersonAvatar from '../../../shared/ui/PersonAvatar';
+import { adminApi } from '../api';
+import { useAdminUsers, useAuditLogs } from '../hooks';
 
 type AdminTab = 'users' | 'audit' | 'certs' | 'conf';
 const TABS: [AdminTab, string, string][] = [
@@ -29,7 +31,7 @@ function UsersTab() {
       message.success(active ? 'Đã kích hoạt tài khoản' : 'Đã vô hiệu hoá tài khoản');
       void refetch();
     } catch (e) {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     }
   };
 

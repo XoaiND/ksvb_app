@@ -71,7 +71,7 @@ test('từ chối ký bắt buộc nhập lý do', async ({ page }) => {
 });
 
 test('Thiếu quyền: báo lỗi tiếng Việt, menu ẩn mục không được phép', async ({ page }) => {
-  await mockApi(page, 'role.user');
+  await mockApi(page, {}, ['document.create', 'document.sign']);
   await page.goto('/reports');
   await expect(page.getByText('Bạn chưa được cấp quyền xem báo cáo (report.view).')).toBeVisible();
   const nav = page.getByRole('navigation', { name: 'Menu chính' });

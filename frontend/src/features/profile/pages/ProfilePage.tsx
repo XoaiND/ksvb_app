@@ -1,9 +1,9 @@
 import { UploadOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Descriptions, Flex, Row, Typography, theme } from 'antd';
-import { useSession } from '../../shared/auth/session';
-import PageHeader from '../../shared/ui/PageHeader';
-import PersonAvatar from '../../shared/ui/PersonAvatar';
-import { ThemeSegmented } from '../../shared/ui/ThemeSwitch';
+import { useSession } from '../../../shared/auth/session';
+import PageHeader from '../../../shared/ui/PageHeader';
+import PersonAvatar from '../../../shared/ui/PersonAvatar';
+import { ThemeSegmented } from '../../../shared/ui/ThemeSwitch';
 
 export default function ProfilePage() {
   const { me } = useSession();

@@ -14,13 +14,3 @@ export function createQueryClient(): QueryClient {
     },
   });
 }
-
-/** Khoá cache dùng chung giữa các feature (để làm mới chéo, vd. số việc chờ ký sau khi ký). */
-export const queryKeys = {
-  me: ['me'] as const,
-  users: ['users'] as const,
-  signRequests: ['sign-requests'] as const,
-  pendingCount: ['sign-requests', 'pending-count'] as const,
-  dashboard: ['dashboard'] as const,
-  templates: ['templates'] as const,
-};

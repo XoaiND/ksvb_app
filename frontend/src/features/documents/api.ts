@@ -1,6 +1,4 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { download, request } from '../../shared/api/http';
-import { queryKeys } from '../../shared/api/queryClient';
+import { download, put, request } from '../../shared/api/http';
 import type {
   Attachment,
   ListParams,
@@ -21,17 +19,17 @@ export const documentsApi = {
     request<PageResult<SignRequestSummary>>('GET', SR, {
       query: {
         scope: p.scope,
-        q: p.q,
-        docType: p.docType,
-        unit: p.unit,
-        status: p.status,
+        q: p.q || undefined,
+        docType: p.docType || undefined,
+        unit: p.unit || undefined,
+        status: p.status || undefined,
         page: p.page ?? 0,
         size: p.size ?? 10,
       },
     }),
   get: (id: number) => request<SignRequestDetail>('GET', `${SR}/${id}`),
   create: (b: SaveSignRequestInput) => request<SignRequestDetail>('POST', SR, { body: b }),
-  update: (id: number, b: SaveSignRequestInput) => request<SignRequestDetail>('PUT', `${SR}/${id}`, { body: b }),
+  update: (id: number, b: SaveSignRequestInput) => put<SignRequestDetail>(`${SR}/${id}`, b),
   remove: (id: number) => request<void>('DELETE', `${SR}/${id}`),
   submit: (id: number) => request<SignRequestDetail>('POST', `${SR}/${id}/submit`),
   sign: (id: number, n?: string) => request<SignRequestDetail>('POST', `${SR}/${id}/sign`, { body: note(n) }),
@@ -47,38 +45,3 @@ export const documentsApi = {
   removeAttachment: (id: number, attachmentId: number) => request<void>('DELETE', `${SR}/${id}/attachments/${attachmentId}`),
   downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>) => download(`${SR}/${id}/attachments/${a.id}`, a.name),
 };
-
-export const useUsers = () => useQuery({ queryKey: queryKeys.users, queryFn: documentsApi.users, staleTime: 60_000 });
-
-/** Danh sách đơn vị (lấy từ danh bạ người dùng) cho bộ lọc. */
-export function useUnits(): string[] {
-  const { data } = useUsers();
-  return [...new Set((data ?? []).map((x) => x.unitName).filter((x): x is string => !!x))].sort();
-}
-
-export const useSignRequests = (p: ListParams) =>
-  useQuery({
-    queryKey: [...queryKeys.signRequests, 'list', p],
-    queryFn: () => documentsApi.list(p),
-    placeholderData: keepPreviousData,
-  });
-
-export const useSignRequest = (id: number) =>
-  useQuery({ queryKey: [...queryKeys.signRequests, 'detail', id], queryFn: () => documentsApi.get(id) });
-
-/** Số văn bản đang chờ tôi ký (huy hiệu ở menu, chuông). */
-export const usePendingCount = (enabled = true) =>
-  useQuery({
-    queryKey: queryKeys.pendingCount,
-    queryFn: () => documentsApi.list({ scope: 'pending', size: 1 }).then((r) => r.totalElements),
-    enabled,
-  }).data ?? 0;
-
-/** Sau thao tác ghi: làm mới mọi danh sách/chi tiết văn bản, số việc chờ ký và dashboard. */
-export function useRefreshDocuments() {
-  const qc = useQueryClient();
-  return () => {
-    void qc.invalidateQueries({ queryKey: queryKeys.signRequests });
-    void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-  };
-}

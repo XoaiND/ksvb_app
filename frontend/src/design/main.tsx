@@ -21,7 +21,7 @@ const readRole = () => {
   }
 };
 const role = ROLES[readRole()] ? readRole() : 'role.leader';
-installDemoBackend(role);
+installDemoBackend(ROLES[role].perms);
 
 function RoleSwitcher() {
   return (

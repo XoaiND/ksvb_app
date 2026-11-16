@@ -1,6 +1,6 @@
 import { Badge, Menu, type MenuProps } from 'antd';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { usePendingCount } from '../../features/documents/api';
+import { usePendingCount } from '../../features/documents/hooks';
 import { useSession } from '../../shared/auth/session';
 import { NAV } from './nav';
 

@@ -8,23 +8,53 @@ export interface FieldError {
   message: string;
 }
 
+/** ProblemDetail (RFC 7807) của backend, docs/kien-truc-chuan.md 3.1. */
+export interface Problem {
+  status?: number;
+  detail?: string;
+  /** Mã chuẩn: VALIDATION_ERROR | UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | BUSINESS_RULE | INTERNAL_ERROR. */
+  code?: string;
+  /** Mã nghiệp vụ chi tiết (tuỳ chọn). */
+  reason?: string;
+  errors?: FieldError[];
+}
+
+const FALLBACK: Record<number, string> = {
+  401: 'Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn',
+  403: 'Không có quyền thực hiện',
+  404: 'Không tìm thấy dữ liệu',
+  413: 'Dữ liệu gửi lên quá lớn',
+};
+
+/** Câu thông báo cho người dùng từ ProblemDetail (lỗi từng trường ưu tiên hơn detail). */
+export function problemMessage(data: Problem | undefined | null, status?: number, fallback = 'Lỗi không xác định'): string {
+  if (data?.errors?.length) return data.errors.map((e) => (e.field ? `${e.field}: ${e.message}` : e.message)).join('; ');
+  if (data?.detail) return data.detail;
+  return (status !== undefined && FALLBACK[status]) || fallback;
+}
+
 /**
- * Lỗi từ backend (RFC 7807, ECOSYSTEM.md 12.2): `message` là `detail` tiếng Việt, `code` là mã ổn định
- * (`VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `BUSINESS_RULE`, `INTERNAL_ERROR`), `reason` là mã
- * nghiệp vụ chi tiết (vd. `UNAUTHENTICATED`, `CONCURRENT_UPDATE`; có thể rỗng),
- * `errors` là lỗi theo từng trường (rỗng nếu không phải lỗi kiểm tra dữ liệu).
+ * Lỗi từ backend: `message` là câu cho người dùng (`detail` tiếng Việt hoặc `errors[]`), `code` là mã chuẩn,
+ * `reason` là mã nghiệp vụ chi tiết, `errors` là lỗi theo từng trường, `body` là toàn bộ ProblemDetail (thuộc tính
+ * thêm của từng lỗi, vd danh sách đang dùng khi xoá).
  */
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly detail: string;
+  readonly reason: string;
   readonly errors: FieldError[];
+  readonly body: Problem & Record<string, unknown>;
 
-  constructor(status: number, message: string, code = '', errors: FieldError[] = []) {
+  constructor(status: number, body: Problem & Record<string, unknown>, message: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
-    this.code = code;
-    this.errors = errors;
+    this.body = body;
+    this.code = typeof body.code === 'string' ? body.code : '';
+    this.detail = typeof body.detail === 'string' ? body.detail : '';
+    this.reason = typeof body.reason === 'string' ? body.reason : '';
+    this.errors = Array.isArray(body.errors) ? body.errors : [];
   }
 
   /** Thông điệp lỗi của một trường, nếu có. */
@@ -33,18 +63,15 @@ export class ApiError extends Error {
   }
 }
 
+/** fetch ném TypeError khi không tới được máy chủ (mạng, CORS, máy chủ tắt). */
+export const isNetworkError = (e: unknown): boolean => e instanceof TypeError;
+
 type Query = Record<string, string | number | boolean | undefined | null>;
 
-interface Options {
-  query?: Query;
-  body?: unknown;
-  form?: FormData;
-}
-
-function url(path: string, query?: Query): string {
+function url(path: string, query?: object): string {
   const qs = new URLSearchParams();
-  Object.entries(query ?? {}).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+  Object.entries((query ?? {}) as Query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) qs.set(k, String(v));
   });
   const s = qs.toString();
   return `${BASE}${path}${s ? `?${s}` : ''}`;
@@ -63,32 +90,21 @@ async function headers(json: boolean): Promise<Record<string, string>> {
 }
 
 async function toError(res: Response): Promise<ApiError> {
-  let detail = '';
-  let code = '';
-  let errors: FieldError[] = [];
+  let body: Problem & Record<string, unknown> = {};
   try {
-    const body = await res.json();
-    detail = typeof body?.detail === 'string' ? body.detail : '';
-    code = typeof body?.code === 'string' ? body.code : '';
-    if (Array.isArray(body?.errors)) {
-      errors = body.errors.filter(
-        (e: unknown): e is FieldError =>
-          typeof (e as FieldError)?.field === 'string' && typeof (e as FieldError)?.message === 'string',
-      );
-    }
+    const parsed = await res.json();
+    if (parsed && typeof parsed === 'object') body = parsed;
   } catch {
     /* không phải JSON */
   }
-  const fallback: Record<number, string> = {
-    401: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-    403: 'Bạn không có quyền thực hiện thao tác này.',
-    404: 'Không tìm thấy dữ liệu.',
-    413: 'Tệp vượt quá dung lượng cho phép.',
-  };
-  return new ApiError(res.status, detail || fallback[res.status] || `Lỗi hệ thống (${res.status})`, code, errors);
+  return new ApiError(res.status, body, problemMessage(body, res.status, `Lỗi hệ thống (${res.status})`));
 }
 
-export async function request<T>(method: string, path: string, opts: Options = {}): Promise<T> {
+export async function request<T>(
+  method: string,
+  path: string,
+  opts: { query?: object; body?: unknown; form?: FormData } = {},
+): Promise<T> {
   const hasJson = opts.body !== undefined;
   const res = await fetch(url(path, opts.query), {
     method,
@@ -114,3 +130,16 @@ export async function download(path: string, fileName: string): Promise<void> {
   a.remove();
   URL.revokeObjectURL(a.href);
 }
+
+/** Thông báo lỗi cho người dùng (ApiError → detail/errors[]; lỗi mạng → câu tiếng Việt). */
+export function errorMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  if (isNetworkError(e)) return 'Không kết nối được máy chủ, vui lòng thử lại';
+  return e instanceof Error && e.message ? e.message : 'Lỗi không xác định';
+}
+
+export const get = <T>(path: string, query?: object) => request<T>('GET', path, { query });
+export const post = <T>(path: string, body?: object) => request<T>('POST', path, { body });
+export const put = <T>(path: string, body?: object) => request<T>('PUT', path, { body });
+export const del = <T>(path: string, query?: object) => request<T>('DELETE', path, { query });
+export const seg = encodeURIComponent;

@@ -44,5 +44,3 @@ export const fmtSize = (bytes: number): string =>
   bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1).replace('.', ',')} MB`;
 
 export const fmtNumber = (n: number, digits = 1) => n.toFixed(digits).replace('.', ',');
-
-export const errorText = (e: unknown): string => (e instanceof Error ? e.message : 'Đã xảy ra lỗi');

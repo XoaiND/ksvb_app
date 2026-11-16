@@ -1,3 +1,4 @@
+import { errorMessage } from '../../../shared/api/http';
 import {
   ArrowLeftOutlined,
   BellOutlined,
@@ -11,16 +12,17 @@ import {
 import { Alert, App, Button, Card, Checkbox, Col, Descriptions, Form, Input, Modal, Row, Tabs, Typography } from 'antd';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import type { Attachment } from '../../shared/api/types';
-import { useSession } from '../../shared/auth/session';
-import { errorText, fmtDate, fmtDateTime, fmtSize, PRIORITY_LABEL } from '../../shared/format';
-import { ErrorNote, Loading } from '../../shared/ui/PageState';
-import PageHeader from '../../shared/ui/PageHeader';
-import { ItemList, ItemRow } from '../../shared/ui/ItemList';
-import { DocStatusTag } from '../../shared/ui/StatusTag';
-import { documentsApi, useRefreshDocuments, useSignRequest } from './api';
-import Paper from './components/Paper';
-import { FlowList, History } from './components/SignFlow';
+import type { Attachment } from '../../../shared/api/types';
+import { useSession } from '../../../shared/auth/session';
+import { fmtDate, fmtDateTime, fmtSize, PRIORITY_LABEL } from '../../../shared/format';
+import { ErrorNote, Loading } from '../../../shared/ui/PageState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import { ItemList, ItemRow } from '../../../shared/ui/ItemList';
+import { DocStatusTag } from '../../../shared/ui/StatusTag';
+import { documentsApi } from '../api';
+import { useRefreshDocuments, useSignRequest } from '../hooks';
+import Paper from '../components/Paper';
+import { FlowList, History } from '../components/SignFlow';
 
 type Dialog = 'sign' | 'reject' | 'cancel' | 'delete' | null;
 
@@ -57,7 +59,7 @@ export default function DocumentDetailPage({ signMode = false }: { signMode?: bo
       refresh();
       after?.();
     } catch (e) {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -86,7 +88,7 @@ export default function DocumentDetailPage({ signMode = false }: { signMode?: bo
     try {
       await documentsApi.downloadAttachment(d.id, a);
     } catch (e) {
-      message.error(errorText(e));
+      message.error(errorMessage(e));
     }
   };
 

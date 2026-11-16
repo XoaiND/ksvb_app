@@ -1,10 +1,9 @@
 import { CheckOutlined, DesktopOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Segmented } from 'antd';
 import type { ReactNode } from 'react';
-import { useSession } from '../auth/session';
-import type { ThemeMode } from '../theme/theme';
+import { useTheme, type ThemeMode } from '../theme/ThemeProvider';
 
-export const THEMES: { key: ThemeMode; label: string; short: string; icon: ReactNode }[] = [
+const THEMES: { key: ThemeMode; label: string; short: string; icon: ReactNode }[] = [
   { key: 'light', label: 'Sáng', short: 'Sáng', icon: <SunOutlined /> },
   { key: 'dark', label: 'Tối', short: 'Tối', icon: <MoonOutlined /> },
   { key: 'system', label: 'Theo hệ thống', short: 'Hệ thống', icon: <DesktopOutlined /> },
@@ -12,7 +11,7 @@ export const THEMES: { key: ThemeMode; label: string; short: string; icon: React
 
 /** Chọn giao diện dạng nút phân đoạn (trang đăng nhập, hồ sơ). */
 export function ThemeSegmented() {
-  const { theme, setTheme } = useSession();
+  const { mode: theme, setMode: setTheme } = useTheme();
   return (
     <Segmented<ThemeMode>
       aria-label="Giao diện"
@@ -25,7 +24,7 @@ export function ThemeSegmented() {
 
 /** Nút đổi giao diện ở thanh trên. */
 export function ThemeMenu() {
-  const { theme, setTheme, isDark } = useSession();
+  const { mode: theme, setMode: setTheme, isDark } = useTheme();
   const cur = THEMES.find((t) => t.key === theme) ?? THEMES[2];
   return (
     <Dropdown

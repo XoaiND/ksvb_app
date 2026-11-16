@@ -4,16 +4,16 @@ import { Loading } from '../shared/ui/PageState';
 import AppLayout from './layout/AppLayout';
 
 // Mỗi màn một chunk riêng: tải lần đầu nhẹ hơn (Ant Design khá nặng).
-const AdminPage = lazy(() => import('../features/admin/AdminPage'));
-const LoginPage = lazy(() => import('../features/auth/LoginPage'));
-const ComposePage = lazy(() => import('../features/compose/ComposePage'));
-const DashboardPage = lazy(() => import('../features/dashboard/DashboardPage'));
-const DocumentDetailPage = lazy(() => import('../features/documents/DocumentDetailPage'));
-const DocumentsPage = lazy(() => import('../features/documents/DocumentsPage'));
-const WatchingPage = lazy(() => import('../features/documents/WatchingPage'));
-const ProfilePage = lazy(() => import('../features/profile/ProfilePage'));
-const ReportsPage = lazy(() => import('../features/reports/ReportsPage'));
-const TemplatesPage = lazy(() => import('../features/templates/TemplatesPage'));
+const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'));
+const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
+const ComposePage = lazy(() => import('../features/compose/pages/ComposePage'));
+const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
+const DocumentDetailPage = lazy(() => import('../features/documents/pages/DocumentDetailPage'));
+const DocumentsPage = lazy(() => import('../features/documents/pages/DocumentsPage'));
+const WatchingPage = lazy(() => import('../features/documents/pages/WatchingPage'));
+const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage'));
+const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'));
+const TemplatesPage = lazy(() => import('../features/templates/pages/TemplatesPage'));
 
 export default function App() {
   return (

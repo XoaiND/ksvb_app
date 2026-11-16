@@ -1,9 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E (ECOSYSTEM.md 12.4): chạy frontend thật (vite dev, VITE_AUTH_DISABLED=true), API giả lập bằng page.route
- * (e2e/mockApi.ts) nên không cần backend/Keycloak/Postgres. Lệnh: `npm run e2e` (lần đầu: `npx playwright install chromium`).
+ * E2E (docs/kien-truc-chuan.md mục 4): chạy frontend thật (vite dev, VITE_AUTH_DISABLED=true), API giả lập bằng
+ * page.route (e2e/mockApi.ts, dữ liệu ở src/design/demoBackend.ts) nên không cần backend/Keycloak/Postgres.
+ * Lệnh: `npm run e2e` (lần đầu: `npx playwright install chromium`). Cổng E2E = cổng dev + 8, mỗi app một cổng riêng.
  */
+const port = 5174 + 8;
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
@@ -12,15 +15,15 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:5182',
+    baseURL: `http://127.0.0.1:${port}`,
     trace: 'retain-on-failure',
     locale: 'vi-VN',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npx vite --port 5182 --strictPort',
-    url: 'http://127.0.0.1:5182',
-    reuseExistingServer: false, // cổng 5182 riêng cho E2E KSVB (5181 là E2E HRM, 5174 là dev server KSVB)
+    command: `npx vite --port ${port} --strictPort`,
+    url: `http://127.0.0.1:${port}`,
+    reuseExistingServer: false,
     env: { VITE_AUTH_DISABLED: 'true' },
     timeout: 120_000,
   },
