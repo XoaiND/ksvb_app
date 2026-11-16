@@ -4,24 +4,28 @@
  */
 import { EyeOutlined } from '@ant-design/icons';
 import { Dropdown, FloatButton } from 'antd';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router';
 import App from '../app/App';
 import AppProviders from '../app/AppProviders';
-import '../shared/theme/global.css';
-import { installDemoBackend, ROLES } from './demoBackend';
+import { ROLE_LABEL, ROLE_PERMISSIONS } from '../shared/auth/permissions';
+import { installDemoBackend } from './demoBackend';
+
+dayjs.locale('vi');
 
 const ROLE_KEY = 'ksvb.preview.role';
 const readRole = () => {
   try {
-    return localStorage.getItem(ROLE_KEY) ?? 'role.leader';
+    return localStorage.getItem(ROLE_KEY) ?? 'role.admin';
   } catch {
-    return 'role.leader';
+    return 'role.admin';
   }
 };
-const role = ROLES[readRole()] ? readRole() : 'role.leader';
-installDemoBackend(ROLES[role].perms);
+const role = ROLE_PERMISSIONS[readRole()] ? readRole() : 'role.admin';
+installDemoBackend(ROLE_PERMISSIONS[role]);
 
 function RoleSwitcher() {
   return (
@@ -31,7 +35,7 @@ function RoleSwitcher() {
       menu={{
         selectable: true,
         selectedKeys: [role],
-        items: Object.entries(ROLES).map(([k, v]) => ({ key: k, label: v.label })),
+        items: Object.keys(ROLE_PERMISSIONS).map((k) => ({ key: k, label: `${ROLE_LABEL[k] ?? k} (${k})` })),
         onClick: ({ key }) => {
           try {
             localStorage.setItem(ROLE_KEY, key);
@@ -42,7 +46,7 @@ function RoleSwitcher() {
         },
       }}
     >
-      <FloatButton icon={<EyeOutlined />} tooltip={`Preview: ${ROLES[role].label}`} />
+      <FloatButton icon={<EyeOutlined />} tooltip={`Preview: ${ROLE_LABEL[role] ?? role}`} />
     </Dropdown>
   );
 }

@@ -13,29 +13,7 @@ import type {
   SignRequestSummary,
   Template,
 } from '../shared/api/types';
-
-export const ROLES: Record<string, { label: string; perms: string[] }> = {
-  'role.user': { label: 'Người dùng (role.user)', perms: ['document.create', 'document.sign'] },
-  'role.leader': {
-    label: 'Lãnh đạo (role.leader)',
-    perms: ['document.create', 'document.sign', 'document.view.all', 'report.view'],
-  },
-  'role.admin': {
-    label: 'Quản trị (role.admin)',
-    perms: [
-      'document.create',
-      'document.sign',
-      'document.view.all',
-      'report.view',
-      'user.manage',
-      'audit.view',
-      'config.manage',
-      'cert.manage',
-      'system.monitor',
-    ],
-  },
-  none: { label: 'Chưa có quyền', perms: [] },
-};
+import { ROLE_PERMISSIONS } from '../shared/auth/permissions';
 
 const p = (id: number, fullName: string, unitName: string, jobTitle: string, active = true): Person => ({
   id,
@@ -486,7 +464,7 @@ export interface DemoReply {
   body?: unknown;
 }
 
-const ALL_PERMS = ROLES['role.admin'].perms;
+const ALL_PERMS = ROLE_PERMISSIONS['role.admin'];
 
 /**
  * Trả lời một lời gọi /api (path không gồm tiền tố /api) như backend thật; lỗi theo RFC 7807 (`code`, `detail`).

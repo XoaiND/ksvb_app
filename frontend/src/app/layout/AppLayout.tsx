@@ -7,7 +7,7 @@ import { useSession } from '../../shared/auth/session';
 import SideMenu from './SideMenu';
 import Topbar from './Topbar';
 
-/** Dưới 1024px menu trái thành ngăn kéo (ECOSYSTEM.md 8). */
+/** Dưới 1024px menu trái thành ngăn kéo (docs/kien-truc-chuan.md mục 4). */
 const NARROW = 1024;
 const SIDEBAR_KEY = 'ksvb.sidebar.collapsed';
 
