@@ -17,4 +17,5 @@ public record SignRequestDetail(Long id, @Nullable String code, String title, St
                                 @Nullable LocalDateTime completedAt,
                                 List<ParticipantDto> participants, List<PersonDto> watchers,
                                 List<AttachmentDto> attachments, boolean canSign, boolean canCancel,
-                                boolean canRecall, boolean canDelete, boolean canEdit) {}
+                                boolean canRecall, boolean canDelete, boolean canEdit,
+                                /** Khoá lạc quan: gửi lại khi sửa (PUT). */ Integer versionNo) {}

@@ -16,10 +16,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vbi.ksvb.shared.audit.AuditService;
 import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.error.ConflictException;
+import vn.vbi.ksvb.shared.error.NotFoundException;
 import vn.vbi.ksvb.shared.outbox.OutboxService;
 import vn.vbi.ksvb.shared.paging.PageResponse;
 import vn.vbi.ksvb.signrequest.domain.DocCounter;
@@ -99,7 +102,11 @@ public class SignRequestService {
     @Transactional
     public SignRequestDetail update(AppUser me, Long id, SaveSignRequest in) {
         SignRequest r = find(id);
+        if (in.versionNo() == null || !in.versionNo().equals(r.getVersionNo())) {
+            throw new ConflictException("CONCURRENT_UPDATE", "Văn bản đã bị người khác thay đổi, vui lòng tải lại");
+        }
         applyEdit(me, r, in, LocalDateTime.now());
+        requests.saveAndFlush(r); // để versionNo trả về là bản mới
         audit.log(me.getId(), "UPDATE", "SignRequest#" + id, r.getTitle());
         return toDetail(r, me);
     }
@@ -108,13 +115,14 @@ public class SignRequestService {
     public void delete(AppUser me, Long id) {
         SignRequest r = find(id);
         if (!r.canDelete(me.getId())) {
-            throw BusinessException.conflict("Chỉ người tạo mới xoá được bản nháp");
+            throw new ConflictException("CANNOT_DELETE", "Chỉ người tạo mới xoá được bản nháp");
         }
         requests.delete(r);
         audit.log(me.getId(), "DELETE", "SignRequest#" + id, r.getTitle());
     }
 
     private void applyEdit(AppUser me, SignRequest r, SaveSignRequest in, LocalDateTime now) {
+        requireCreator(me, r, "Chỉ người tạo mới được sửa văn bản");
         r.edit(me.getId(), in.title().trim(), in.docType().trim(), in.description(), in.priority(), in.mode(),
                 in.deadline(), in.message(), Boolean.TRUE.equals(in.shared()), now);
         r.replaceSigners(resolveUsers(in.signerIds(), "người ký"));
@@ -131,6 +139,7 @@ public class SignRequestService {
     public SignRequestDetail submit(AppUser me, Long id) {
         SignRequest r = find(id);
         LocalDateTime now = LocalDateTime.now();
+        requireCreator(me, r, "Chỉ người tạo mới được trình ký");
         r.submit(me.getId(), r.getCode() == null ? nextCode(r.getDocType(), now.toLocalDate()) : null, now);
         audit.log(me.getId(), "SUBMIT", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SUBMITTED, me.getId());
@@ -141,6 +150,7 @@ public class SignRequestService {
     @Transactional
     public SignRequestDetail sign(AppUser me, Long id, String note) {
         SignRequest r = find(id);
+        requireParticipant(me, r);
         r.sign(me.getId(), note, LocalDateTime.now());
         audit.log(me.getId(), "SIGN", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SIGNED, me.getId());
@@ -157,6 +167,7 @@ public class SignRequestService {
     @Transactional
     public SignRequestDetail reject(AppUser me, Long id, String reason) {
         SignRequest r = find(id);
+        requireParticipant(me, r);
         r.reject(me.getId(), reason, LocalDateTime.now());
         audit.log(me.getId(), "REJECT", codeOf(r), reason);
         event(r, SignRequestEvents.REJECTED, me.getId());
@@ -167,6 +178,7 @@ public class SignRequestService {
     @Transactional
     public SignRequestDetail cancel(AppUser me, Long id, String reason) {
         SignRequest r = find(id);
+        requireCreator(me, r, "Chỉ người tạo mới được huỷ văn bản");
         r.cancel(me.getId(), reason, LocalDateTime.now());
         audit.log(me.getId(), "CANCEL", codeOf(r), reason);
         event(r, SignRequestEvents.CANCELLED, me.getId());
@@ -177,6 +189,7 @@ public class SignRequestService {
     @Transactional
     public SignRequestDetail recall(AppUser me, Long id) {
         SignRequest r = find(id);
+        requireCreator(me, r, "Chỉ người tạo mới được thu hồi văn bản");
         r.recall(me.getId(), LocalDateTime.now());
         audit.log(me.getId(), "RECALL", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.RECALLED, me.getId());
@@ -187,10 +200,10 @@ public class SignRequestService {
     public void remind(AppUser me, Long id) {
         SignRequest r = find(id);
         if (!r.isCreator(me.getId())) {
-            throw BusinessException.forbidden("Chỉ người tạo mới được nhắc ký");
+            throw new AccessDeniedException("Chỉ người tạo mới được nhắc ký");
         }
         if (r.getStatus() != DocStatus.PENDING) {
-            throw BusinessException.conflict("Chỉ nhắc ký được văn bản đang chờ ký");
+            throw new ConflictException("NOT_PENDING", "Chỉ nhắc ký được văn bản đang chờ ký");
         }
         safeNotify(() -> notifier.remind(r));
         audit.log(me.getId(), "REMIND", codeOf(r), null);
@@ -228,13 +241,13 @@ public class SignRequestService {
     // ------------------------------------------------------------------ nội bộ & ánh xạ
 
     private SignRequest find(Long id) {
-        return requests.findById(id).orElseThrow(() -> BusinessException.notFound("Không tìm thấy văn bản"));
+        return requests.findById(id).orElseThrow(() -> new NotFoundException("Văn bản", id));
     }
 
     private SignRequest load(AppUser me, Long id) {
         SignRequest r = find(id);
         if (!r.canView(me)) {
-            throw BusinessException.forbidden("Bạn không có quyền xem văn bản này");
+            throw new AccessDeniedException("Bạn không có quyền xem văn bản này");
         }
         return r;
     }
@@ -246,7 +259,7 @@ public class SignRequestService {
         for (Long id : ids) {
             AppUser u = byId.get(id);
             if (u == null || !u.isActive()) {
-                throw BusinessException.invalid("Không tìm thấy " + what + " có id " + id);
+                throw new BusinessException("UNKNOWN_USER", "Không tìm thấy " + what + " có id " + id);
             }
             out.add(u);
         }
@@ -257,7 +270,7 @@ public class SignRequestService {
         try {
             return Scope.valueOf(s == null ? "PENDING" : s.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw BusinessException.invalid("scope phải là pending, mine, shared hoặc watching");
+            throw new BusinessException("INVALID_SCOPE", "scope phải là pending, mine, shared hoặc watching");
         }
     }
 
@@ -305,6 +318,19 @@ public class SignRequestService {
                 r.getParticipants().stream().map(ParticipantDto::of).toList(), watchers,
                 r.getAttachments().stream().map(AttachmentDto::of).toList(),
                 r.isPendingFor(me.getId()), r.canCancelOrRecall(me.getId()), r.canCancelOrRecall(me.getId()),
-                r.canDelete(me.getId()), draft && creator);
+                r.canDelete(me.getId()), draft && creator, r.getVersionNo());
+    }
+
+    /** Quyền trên văn bản (403): kiểm ở service; luật domain vẫn chặn lại (422) nếu bị gọi sai. */
+    private static void requireCreator(AppUser me, SignRequest r, String message) {
+        if (!r.isCreator(me.getId())) {
+            throw new AccessDeniedException(message);
+        }
+    }
+
+    private static void requireParticipant(AppUser me, SignRequest r) {
+        if (!r.isParticipant(me.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền xử lý văn bản này");
+        }
     }
 }

@@ -11,21 +11,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import vn.vbi.ksvb.PostgresIntegrationTest;
 
 /** Kiểm thử toàn tuyến: Flyway + JPA + controller trên PostgreSQL (Testcontainers), người dùng lấy từ header X-User-Id. */
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("it")
-class SignRequestApiTest {
+class SignRequestApiTest extends PostgresIntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -50,10 +47,11 @@ class SignRequestApiTest {
     }
 
     @Test
-    void scopeKhongHopLe_tra400() throws Exception {
+    void scopeKhongHopLe_tra422() throws Exception {
         mvc.perform(get("/api/sign-requests").param("scope", "abc").header("X-User-Id", 4))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("BUSINESS_RULE"))
+                .andExpect(jsonPath("$.reason").value("INVALID_SCOPE"));
     }
 
     @Test
@@ -83,8 +81,9 @@ class SignRequestApiTest {
         mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
                         .file(new MockMultipartFile("file", "gia.pdf", "application/pdf", "khong phai pdf".getBytes()))
                         .header("X-User-Id", 4))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("BUSINESS_RULE"))
+                .andExpect(jsonPath("$.reason").value("INVALID_PDF"));
 
         mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
                         .file(new MockMultipartFile("file", "hd.pdf", "application/pdf", "%PDF-1.4 demo".getBytes()))

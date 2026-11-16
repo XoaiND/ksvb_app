@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import vn.vbi.ksvb.shared.audit.Auditable;
 import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.error.ConflictException;
 import vn.vbi.ksvb.shared.security.Permissions;
 import vn.vbi.ksvb.user.domain.AppUser;
 
@@ -134,7 +135,7 @@ public class SignRequest extends Auditable {
     public void replaceSigners(List<AppUser> signers) {
         requireStatus(DocStatus.DRAFT, "Chỉ sửa được luồng ký khi văn bản là bản nháp");
         if (signers.stream().map(AppUser::getId).distinct().count() != signers.size()) {
-            throw BusinessException.businessRule("Một người không được xuất hiện hai lần trong luồng ký");
+            throw new BusinessException("DUPLICATE_SIGNER", "Một người không được xuất hiện hai lần trong luồng ký");
         }
         participants.clear();
         int order = 1;
@@ -167,10 +168,10 @@ public class SignRequest extends Auditable {
         requireCreator(actorId, "Chỉ người tạo mới được trình ký");
         requireStatus(DocStatus.DRAFT, "Chỉ trình ký được văn bản ở trạng thái nháp");
         if (participants.isEmpty()) {
-            throw BusinessException.businessRule("Cần ít nhất một người ký");
+            throw new BusinessException("NO_SIGNER", "Cần ít nhất một người ký");
         }
         if (!hasSignableAttachment()) {
-            throw BusinessException.businessRule("Cần ít nhất một tệp PDF cần ký");
+            throw new BusinessException("NO_PDF", "Cần ít nhất một tệp PDF cần ký");
         }
         this.code = this.code == null ? code : this.code;
         this.status = DocStatus.PENDING;
@@ -188,11 +189,11 @@ public class SignRequest extends Auditable {
         requireStatus(DocStatus.PENDING, "Văn bản không còn ở trạng thái chờ ký");
         Participant p = participantOf(userId);
         if (p.getStatus() == SignerStatus.WAITING) {
-            throw BusinessException.conflict(
+            throw new ConflictException("NOT_YOUR_TURN",
                     "Quy trình đang ở bước trước. Hệ thống sẽ thông báo khi đến lượt của bạn.");
         }
         if (p.getStatus() != SignerStatus.PENDING) {
-            throw BusinessException.conflict("Bạn đã xử lý văn bản này");
+            throw new ConflictException("ALREADY_ACTED", "Bạn đã xử lý văn bản này");
         }
         p.markSigned(note, now);
         if (participants.stream().allMatch(x -> x.getStatus() == SignerStatus.SIGNED)) {
@@ -207,11 +208,11 @@ public class SignRequest extends Auditable {
     public void reject(Long userId, String reason, LocalDateTime now) {
         requireStatus(DocStatus.PENDING, "Văn bản không còn ở trạng thái chờ ký");
         if (reason == null || reason.isBlank()) {
-            throw BusinessException.businessRule("Cần nhập lý do từ chối");
+            throw new BusinessException("REASON_REQUIRED", "Cần nhập lý do từ chối");
         }
         Participant p = participantOf(userId);
         if (p.getStatus() != SignerStatus.PENDING) {
-            throw BusinessException.conflict("Bạn không thể từ chối văn bản này ở thời điểm hiện tại");
+            throw new ConflictException("CANNOT_REJECT", "Bạn không thể từ chối văn bản này ở thời điểm hiện tại");
         }
         p.markRejected(reason.trim(), now);
         this.status = DocStatus.REJECTED;
@@ -222,10 +223,10 @@ public class SignRequest extends Auditable {
         requireCreator(actorId, "Chỉ người tạo mới được huỷ văn bản");
         requireStatus(DocStatus.PENDING, "Văn bản không thể huỷ ở trạng thái hiện tại");
         if (anyoneActed()) {
-            throw BusinessException.conflict("Đã có người ký hoặc từ chối nên không thể huỷ");
+            throw new ConflictException("ALREADY_ACTED", "Đã có người ký hoặc từ chối nên không thể huỷ");
         }
         if (reason == null || reason.isBlank()) {
-            throw BusinessException.businessRule("Cần nhập lý do huỷ");
+            throw new BusinessException("REASON_REQUIRED", "Cần nhập lý do huỷ");
         }
         this.cancellationReason = reason.trim();
         this.status = DocStatus.CANCELLED;
@@ -236,7 +237,7 @@ public class SignRequest extends Auditable {
         requireCreator(actorId, "Chỉ người tạo mới được thu hồi văn bản");
         requireStatus(DocStatus.PENDING, "Chỉ thu hồi được văn bản đang chờ ký");
         if (anyoneActed()) {
-            throw BusinessException.conflict("Đã có người ký hoặc từ chối nên không thể thu hồi");
+            throw new ConflictException("ALREADY_ACTED", "Đã có người ký hoặc từ chối nên không thể thu hồi");
         }
         this.status = DocStatus.DRAFT;
         this.submittedAt = null;
@@ -297,18 +298,18 @@ public class SignRequest extends Auditable {
 
     private Participant participantOf(Long userId) {
         return participants.stream().filter(p -> p.getUser().getId().equals(userId)).findFirst()
-                .orElseThrow(() -> BusinessException.forbidden("Bạn không có quyền xử lý văn bản này"));
+                .orElseThrow(() -> new BusinessException("NOT_PARTICIPANT", "Bạn không có quyền xử lý văn bản này"));
     }
 
     private void requireCreator(Long actorId, String message) {
         if (!creator.getId().equals(actorId)) {
-            throw BusinessException.forbidden(message);
+            throw new BusinessException("NOT_CREATOR", message);
         }
     }
 
     private void requireStatus(DocStatus expected, String message) {
         if (status != expected) {
-            throw BusinessException.conflict(message);
+            throw new ConflictException("INVALID_STATUS", message);
         }
     }
 

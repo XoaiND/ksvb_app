@@ -1,6 +1,7 @@
 package vn.vbi.ksvb.shared.security;
 
 import java.util.List;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -8,7 +9,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import vn.vbi.ksvb.config.KsvbProperties;
-import vn.vbi.ksvb.shared.error.BusinessException;
 import vn.vbi.ksvb.user.application.UserProvisioningService;
 import vn.vbi.ksvb.user.domain.AppUser;
 import vn.vbi.ksvb.user.infra.UserRepository;
@@ -46,7 +46,7 @@ public class CurrentUser {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         AppUser u = props.security().enabled() ? fromJwt(auth) : fromDev(auth);
         if (!u.isActive()) {
-            throw BusinessException.forbidden("Tài khoản đã bị vô hiệu hoá");
+            throw new AccessDeniedException("Tài khoản đã bị vô hiệu hoá");
         }
         List<String> granted = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         return u.withPermissions(granted);
@@ -54,12 +54,12 @@ public class CurrentUser {
 
     private AppUser fromJwt(Authentication auth) {
         if (!(auth instanceof JwtAuthenticationToken token)) {
-            throw BusinessException.forbidden("Chưa đăng nhập");
+            throw new AccessDeniedException("Chưa đăng nhập");
         }
         Jwt jwt = token.getToken();
         String email = firstText(jwt.getClaimAsString("email"), jwt.getClaimAsString("preferred_username"));
         if (email == null) {
-            throw BusinessException.forbidden("Token không có thông tin email");
+            throw new AccessDeniedException("Token không có thông tin email");
         }
         return provisioning.findOrCreate(new UserProvisioningService.Claims(
                 email,
@@ -71,10 +71,10 @@ public class CurrentUser {
 
     private AppUser fromDev(Authentication auth) {
         if (auth == null || auth.getName() == null || "anonymousUser".equals(auth.getName())) {
-            throw BusinessException.forbidden("Không tìm thấy người dùng (header X-User-Id)");
+            throw new AccessDeniedException("Không tìm thấy người dùng (header X-User-Id)");
         }
         return users.findByEmailIgnoreCase(auth.getName())
-                .orElseThrow(() -> BusinessException.forbidden("Không tìm thấy người dùng " + auth.getName()));
+                .orElseThrow(() -> new AccessDeniedException("Không tìm thấy người dùng " + auth.getName()));
     }
 
     private static String firstText(String a, String b) {

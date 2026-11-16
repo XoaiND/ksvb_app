@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.error.ConflictException;
 import vn.vbi.ksvb.shared.security.Permissions;
 import vn.vbi.ksvb.user.domain.AppUser;
 import vn.vbi.ksvb.user.domain.UserRole;
@@ -44,9 +44,6 @@ class SignRequestWorkflowTest {
         return r;
     }
 
-    private static void assertStatus(BusinessException e, HttpStatus status) {
-        assertThat(e.getStatus()).isEqualTo(status.value());
-    }
 
     @Test
     void tuanTu_chiNguoiDauDuocKichHoat_vaChuyenLuotKhiKy() {
@@ -75,7 +72,7 @@ class SignRequestWorkflowTest {
         r.submit(4L, "X", NOW);
 
         assertThatThrownBy(() -> r.sign(2L, null, NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.CONFLICT));
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test
@@ -99,9 +96,9 @@ class SignRequestWorkflowTest {
         r.sign(1L, null, NOW);
 
         assertThatThrownBy(() -> r.sign(1L, null, NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.CONFLICT));
+                .isInstanceOf(ConflictException.class);
         assertThatThrownBy(() -> r.sign(99L, null, NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.FORBIDDEN));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getReason()).startsWith("NOT_"));
     }
 
     @Test
@@ -110,11 +107,11 @@ class SignRequestWorkflowTest {
         r.submit(4L, "X", NOW);
 
         assertThatThrownBy(() -> r.reject(1L, "  ", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
+                .isInstanceOf(BusinessException.class);
 
         r.reject(1L, "Thiếu phụ lục", NOW);
         assertThat(r.getStatus()).isEqualTo(DocStatus.REJECTED);
-        assertThatThrownBy(() -> r.sign(2L, null, NOW)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> r.sign(2L, null, NOW)).isInstanceOf(ConflictException.class);
     }
 
     @Test
@@ -123,9 +120,9 @@ class SignRequestWorkflowTest {
         r.submit(4L, "X", NOW);
 
         assertThatThrownBy(() -> r.cancel(1L, "lý do", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.FORBIDDEN));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getReason()).startsWith("NOT_"));
         assertThatThrownBy(() -> r.cancel(4L, "", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
+                .isInstanceOf(BusinessException.class);
 
         r.cancel(4L, "Nộp nhầm", NOW);
         assertThat(r.getStatus()).isEqualTo(DocStatus.CANCELLED);
@@ -140,9 +137,9 @@ class SignRequestWorkflowTest {
 
         assertThat(r.canCancelOrRecall(4L)).isFalse();
         assertThatThrownBy(() -> r.cancel(4L, "x", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.CONFLICT));
+                .isInstanceOf(ConflictException.class);
         assertThatThrownBy(() -> r.recall(4L, NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.CONFLICT));
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test
@@ -164,31 +161,31 @@ class SignRequestWorkflowTest {
     void trinhKy_canNguoiKyVaTepPdf() {
         SignRequest empty = new SignRequest(creator, "T", "Hợp đồng", NOW);
         assertThatThrownBy(() -> empty.submit(4L, "X", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
+                .isInstanceOf(BusinessException.class);
 
         SignRequest noFile = new SignRequest(creator, "T", "Hợp đồng", NOW);
         noFile.replaceSigners(List.of(a));
         assertThatThrownBy(() -> noFile.submit(4L, "X", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void chiNguoiTaoMoiTrinhKyVaSuaDuoc_vaChiKhiLaNhap() {
         SignRequest r = draft(SignMode.SEQ, a);
         assertThatThrownBy(() -> r.submit(1L, "X", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.FORBIDDEN));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getReason()).startsWith("NOT_"));
 
         r.submit(4L, "X", NOW);
         assertThatThrownBy(() -> r.edit(4L, "Đổi", "Hợp đồng", null, Priority.NORMAL, SignMode.SEQ, null, null,
-                false, NOW)).isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.CONFLICT));
-        assertThatThrownBy(() -> r.replaceSigners(List.of(b))).isInstanceOf(BusinessException.class);
+                false, NOW)).isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> r.replaceSigners(List.of(b))).isInstanceOf(ConflictException.class);
     }
 
     @Test
     void luongKyKhongChoPhepTrungNguoi() {
         SignRequest r = new SignRequest(creator, "T", "Hợp đồng", NOW);
         assertThatThrownBy(() -> r.replaceSigners(List.of(a, a)))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertStatus(e, HttpStatus.UNPROCESSABLE_ENTITY));
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

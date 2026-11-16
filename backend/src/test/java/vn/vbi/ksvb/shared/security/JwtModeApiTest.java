@@ -16,20 +16,18 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import vn.vbi.ksvb.PostgresIntegrationTest;
 
 /**
  * Chế độ chạy thật (ksvb.security.enabled=true): bắt buộc JWT, quyền = client role, người dùng tạo từ claim.
  * Token giả lập bằng jwt() của spring-security-test (không gọi Keycloak). DB riêng để không lẫn với test dev.
  */
 @SpringBootTest(properties = {
-        "ksvb.security.enabled=true",
-        "spring.datasource.url=jdbc:tc:postgresql:17-alpine:///ksvbjwt"
+        "ksvb.security.enabled=true"
 })
 @AutoConfigureMockMvc
-@ActiveProfiles("it")
-class JwtModeApiTest {
+class JwtModeApiTest extends PostgresIntegrationTest {
 
     @Autowired MockMvc mvc;
 
@@ -44,8 +42,7 @@ class JwtModeApiTest {
     @Test
     void khongCoToken_tra401() throws Exception {
         mvc.perform(get("/api/me")).andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
-                .andExpect(jsonPath("$.reason").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
                 .andExpect(jsonPath("$.detail").isNotEmpty());
         mvc.perform(get("/api/sign-requests")).andExpect(status().isUnauthorized());
     }

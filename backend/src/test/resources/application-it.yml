@@ -1,13 +1,10 @@
-# Profile "it": test tích hợp với PostgreSQL thật trong Testcontainers (cần Docker), không dùng H2 (ECOSYSTEM.md 12.4).
-# Mỗi tên DB khác nhau trong URL jdbc:tc: là một container riêng → test cần dữ liệu tách biệt đặt URL riêng.
+# Profile "it": test tích hợp với PostgreSQL trong Testcontainers (datasource do @ServiceConnection cấp,
+# lớp nền PostgresIntegrationTest). Không dùng H2.
 spring:
   config:
     import: ""                 # không đọc backend/.env của máy dev
   datasource:
-    url: jdbc:tc:postgresql:17-alpine:///ksvbtest
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-    username: test
-    password: test             # chỉ để không thiếu KSVB_DB_PASSWORD
+    password: test             # bị ghi đè bởi @ServiceConnection; chỉ để không thiếu KSVB_DB_PASSWORD
   jpa:
     properties:
       hibernate:

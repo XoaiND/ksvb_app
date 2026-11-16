@@ -14,13 +14,9 @@ import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
+import vn.vbi.ksvb.PostgresIntegrationTest;
 import vn.vbi.ksvb.shared.outbox.OutboxEvent;
 import vn.vbi.ksvb.shared.outbox.OutboxRepository;
 import vn.vbi.ksvb.shared.outbox.OutboxService;
@@ -39,13 +35,8 @@ import vn.vbi.ksvb.user.infra.UserRepository;
         "spring.flyway.schemas=ksvb",
         "spring.flyway.default-schema=ksvb"
 })
-@ActiveProfiles("it")
-@Testcontainers
-class PostgresIntegrationTest {
+class SignRequestServiceTest extends PostgresIntegrationTest {
 
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     @Autowired JdbcTemplate jdbc;
     @Autowired SignRequestService service;
@@ -90,7 +81,7 @@ class PostgresIntegrationTest {
         var signer = users.findById(1L).orElseThrow();
         long id = tx.execute(s -> {
             var d = service.create(creator, new SaveSignRequest("Công văn thử outbox", "Công văn", null, Priority.NORMAL, SignMode.SEQ,
-                    LocalDate.now().plusDays(5), null, false, List.of(1L), List.of()));
+                    LocalDate.now().plusDays(5), null, false, List.of(1L), List.of(), null));
             return d.id();
         });
         jdbc.update("insert into ksvb.attachment (request_id, original_name, stored_name, size_bytes, signable, uploaded_at)"
@@ -119,6 +110,20 @@ class PostgresIntegrationTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.sign(signer, id, null));
         assertThat(outbox.findByAggregateTypeAndAggregateIdOrderByOccurredAtAsc(SignRequestEvents.AGGREGATE,
                 String.valueOf(id))).hasSize(3);
+    }
+
+    @Test
+    void suaVanBan_versionNoLech_tra409() {
+        var creator = users.findById(6L).orElseThrow();
+        var d = tx.execute(s -> service.create(creator, new SaveSignRequest("Bản nháp khoá lạc quan", "Hợp đồng", null,
+                Priority.NORMAL, SignMode.SEQ, null, null, false, List.of(1L), List.of(), null)));
+        var edit = new SaveSignRequest("Sửa lần 1", "Hợp đồng", null, Priority.NORMAL, SignMode.SEQ, null, null, false,
+                List.of(1L), List.of(), d.versionNo());
+        var saved = service.update(creator, d.id(), edit);
+        assertThat(saved.versionNo()).isGreaterThan(d.versionNo());
+        // gửi lại versionNo cũ (người khác vừa sửa) → 409
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.update(creator, d.id(), edit))
+                .isInstanceOf(vn.vbi.ksvb.shared.error.ConflictException.class);
     }
 
     @Test

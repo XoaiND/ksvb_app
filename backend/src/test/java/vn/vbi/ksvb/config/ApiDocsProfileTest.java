@@ -10,15 +10,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import vn.vbi.ksvb.PostgresIntegrationTest;
 
 /** Swagger/OpenAPI: bật ở dev, mặc định tắt ở profile prod (ECOSYSTEM.md 12.5). */
 class ApiDocsProfileTest {
 
     @Nested
-    @SpringBootTest
     @AutoConfigureMockMvc
-    @ActiveProfiles("it")
-    class Dev {
+    class Dev extends PostgresIntegrationTest {
         @Autowired MockMvc mvc;
 
         @Test
@@ -29,12 +28,11 @@ class ApiDocsProfileTest {
 
     @Nested
     @SpringBootTest(properties = {
-            "ksvb.storage.path=./target/test-upload",
-            "spring.datasource.url=jdbc:tc:postgresql:17-alpine:///ksvbprod"
+            "ksvb.storage.path=./target/test-upload"
     })
     @AutoConfigureMockMvc
     @ActiveProfiles({"it", "prod"})
-    class Prod {
+    class Prod extends PostgresIntegrationTest {
         @Autowired MockMvc mvc;
 
         @Test

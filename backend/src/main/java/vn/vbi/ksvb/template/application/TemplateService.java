@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vbi.ksvb.shared.audit.AuditService;
 import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.error.NotFoundException;
 import vn.vbi.ksvb.template.domain.SignTemplate;
 import vn.vbi.ksvb.template.infra.TemplateRepository;
 import vn.vbi.ksvb.user.application.PersonDto;
@@ -57,20 +59,20 @@ public class TemplateService {
     }
 
     private SignTemplate owned(AppUser me, Long id) {
-        SignTemplate t = templates.findById(id).orElseThrow(() -> BusinessException.notFound("Không tìm thấy mẫu"));
+        SignTemplate t = templates.findById(id).orElseThrow(() -> new NotFoundException("Mẫu người nhận", id));
         if (!t.getOwnerId().equals(me.getId())) {
-            throw BusinessException.forbidden("Bạn không có quyền với mẫu này");
+            throw new AccessDeniedException("Bạn không có quyền với mẫu này");
         }
         return t;
     }
 
     private void validateSigners(List<Long> ids) {
         if (ids.stream().distinct().count() != ids.size()) {
-            throw BusinessException.businessRule("Một người không được xuất hiện hai lần trong mẫu");
+            throw new BusinessException("DUPLICATE_SIGNER", "Một người không được xuất hiện hai lần trong mẫu");
         }
         long found = users.findAllById(ids).size();
         if (found != ids.size()) {
-            throw BusinessException.businessRule("Có người ký không tồn tại");
+            throw new BusinessException("UNKNOWN_USER", "Có người ký không tồn tại");
         }
     }
 

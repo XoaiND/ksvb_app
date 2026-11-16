@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.vbi.ksvb.shared.audit.AuditLog;
 import vn.vbi.ksvb.shared.audit.AuditLogRepository;
 import vn.vbi.ksvb.shared.audit.AuditService;
-import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.error.ConflictException;
+import vn.vbi.ksvb.shared.error.NotFoundException;
 import vn.vbi.ksvb.shared.paging.PageResponse;
 import vn.vbi.ksvb.user.application.PersonDto;
 import vn.vbi.ksvb.user.domain.AppUser;
@@ -37,9 +38,9 @@ public class AdminService {
 
     @Transactional
     public PersonDto updateUser(AppUser admin, Long id, UpdateUser in) {
-        AppUser u = users.findById(id).orElseThrow(() -> BusinessException.notFound("Không tìm thấy người dùng"));
+        AppUser u = users.findById(id).orElseThrow(() -> new NotFoundException("Người dùng", id));
         if (u.getId().equals(admin.getId()) && Boolean.FALSE.equals(in.active())) {
-            throw BusinessException.conflict("Không thể tự vô hiệu hoá chính mình");
+            throw new ConflictException("SELF_DEACTIVATE", "Không thể tự vô hiệu hoá chính mình");
         }
         if (in.active() != null) u.setActive(in.active());
         audit.log(admin.getId(), "UPDATE_USER", "User#" + id, "active=" + u.isActive());

@@ -1,6 +1,7 @@
 package vn.vbi.ksvb.shared.error;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -22,9 +24,9 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import vn.vbi.ksvb.shared.audit.BlockedActionAuditor;
 
 /**
- * Chuẩn hoá lỗi theo RFC 7807 (ProblemDetail) + quy ước ECOSYSTEM.md 12.2: luôn có {@code code} ({@link ApiErrorCode}),
- * lỗi kiểm tra dữ liệu có thêm {@code errors[]} dạng {@code {field, message}}; {@code detail} tiếng Việt.
- * Kế thừa ResponseEntityExceptionHandler để các lỗi chuẩn của Spring MVC (400/404/405/415...) giữ đúng mã HTTP.
+ * Chuẩn hoá lỗi theo RFC 7807 (docs/kien-truc-chuan.md mục 3.1): luôn có {@code code} ({@link ApiErrorCode}),
+ * {@code reason} (mã nghiệp vụ chi tiết, nếu có), {@code errors[]} = {@code {field, message}} cho lỗi dữ liệu,
+ * {@code detail} tiếng Việt. Thao tác ghi bị chặn (403/409/422) được ghi nhật ký qua {@link BlockedActionAuditor}.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -41,7 +43,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public record FieldError(String field, String message) {
     }
 
-    /** ProblemDetail chuẩn: {@code code} (bộ mã 12.2), {@code reason} (mã nghiệp vụ chi tiết, nếu có). */
     public static ProblemDetail problem(HttpStatusCode status, String code, String reason, String detail) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
         pd.setProperty("code", code);
@@ -51,33 +52,62 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
+    private ProblemDetail audited(HttpServletRequest req, ProblemDetail p) {
+        blocked.record(req, String.valueOf(p.getProperties().get("code")), p.getDetail());
+        return p;
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    ProblemDetail notFound(NotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.NOT_FOUND, null, e.getMessage());
+    }
+
     @ExceptionHandler(BusinessException.class)
     ProblemDetail business(BusinessException e, HttpServletRequest req) {
-        if (!ApiErrorCode.VALIDATION_ERROR.equals(e.getCode())) {
-            blocked.record(req, e.getCode(), e.getMessage());
-        }
-        return problem(HttpStatus.valueOf(e.getStatus()), e.getCode(), e.getReason(), e.getMessage());
+        return audited(req, problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.BUSINESS_RULE, e.getReason(),
+                e.getMessage()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    ProblemDetail conflict(ConflictException e, HttpServletRequest req) {
+        ProblemDetail p = problem(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, e.getReason(), e.getMessage());
+        e.getProperties().forEach(p::setProperty);
+        return audited(req, p);
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)
-    ProblemDetail conflict(OptimisticLockingFailureException e, HttpServletRequest req) {
-        blocked.record(req, ApiErrorCode.CONFLICT, "Khoá lạc quan: dữ liệu đã bị người khác cập nhật");
-        return problem(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, "CONCURRENT_UPDATE",
-                "Văn bản vừa được người khác cập nhật. Vui lòng tải lại và thử lại.");
+    ProblemDetail optimistic(OptimisticLockingFailureException e, HttpServletRequest req) {
+        return audited(req, problem(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, "CONCURRENT_UPDATE",
+                "Dữ liệu đã bị người khác thay đổi, vui lòng tải lại"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    ProblemDetail integrity(DataIntegrityViolationException e) {
+    ProblemDetail integrity(DataIntegrityViolationException e, HttpServletRequest req) {
         log.warn("Vi phạm ràng buộc dữ liệu: {}", e.getMostSpecificCause().getMessage());
-        return problem(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, "DATA_INTEGRITY",
-                "Dữ liệu vi phạm ràng buộc, vui lòng kiểm tra lại.");
+        return audited(req, problem(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, "DATA_INTEGRITY",
+                "Dữ liệu vi phạm ràng buộc, vui lòng kiểm tra lại"));
     }
 
-    /** {@code @PreAuthorize} từ chối (người đã đăng nhập nhưng thiếu quyền). */
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity<Object> constraint(ConstraintViolationException e) {
+        List<FieldError> errors = e.getConstraintViolations().stream()
+                .map(v -> new FieldError(lastNode(v.getPropertyPath().toString()), v.getMessage())).toList();
+        return validation(errors);
+    }
+
+    /** Thiếu quyền ({@code @PreAuthorize} hoặc service kiểm): 403, detail = thông điệp nếu có. */
     @ExceptionHandler(AccessDeniedException.class)
     ProblemDetail denied(AccessDeniedException e, HttpServletRequest req) {
-        blocked.record(req, ApiErrorCode.FORBIDDEN, "Thiếu quyền");
-        return problem(HttpStatus.FORBIDDEN, ApiErrorCode.FORBIDDEN, null, "Bạn không có quyền thực hiện thao tác này.");
+        String msg = e.getMessage();
+        boolean vietnamese = msg != null && !msg.isBlank() && !msg.startsWith("Access Denied");
+        return audited(req, problem(HttpStatus.FORBIDDEN, ApiErrorCode.FORBIDDEN, null,
+                vietnamese ? msg : "Không có quyền thực hiện"));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    ProblemDetail unauthenticated(AuthenticationException e) {
+        return problem(HttpStatus.UNAUTHORIZED, ApiErrorCode.UNAUTHORIZED, null,
+                "Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn");
     }
 
     /** Lỗi không lường trước: không lộ chi tiết ra ngoài, ghi log đầy đủ. */
@@ -85,7 +115,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ProblemDetail unexpected(Exception e) {
         log.error("Lỗi không xử lý được", e);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, null,
-                "Lỗi hệ thống, vui lòng thử lại sau.");
+                "Lỗi hệ thống, vui lòng thử lại sau");
     }
 
     @Override
@@ -125,9 +155,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 pd.setProperty("code", ApiErrorCode.fromStatus(s));
             }
             if (s == 413) {
-                pd.setDetail("Tệp vượt quá dung lượng cho phép.");
+                pd.setDetail("Tệp vượt quá dung lượng cho phép");
             }
         }
         return res;
+    }
+
+    private static String lastNode(String path) {
+        int i = path.lastIndexOf('.');
+        return i < 0 ? path : path.substring(i + 1);
     }
 }

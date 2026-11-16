@@ -25,7 +25,7 @@ public final class ProblemResponses {
         BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();
         return (req, res, ex) -> {
             bearer.commence(req, res, ex);
-            write(req, res, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED",
+            write(req, res, HttpStatus.UNAUTHORIZED,
                     "Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại.");
         };
     }
@@ -34,12 +34,12 @@ public final class ProblemResponses {
         BearerTokenAccessDeniedHandler bearer = new BearerTokenAccessDeniedHandler();
         return (req, res, ex) -> {
             bearer.handle(req, res, ex);
-            write(req, res, HttpStatus.FORBIDDEN, null, "Bạn không có quyền thực hiện thao tác này.");
+            write(req, res, HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này.");
         };
     }
 
-    /** {@code code} luôn là {@code FORBIDDEN} (bộ mã 12.2); 401 có thêm {@code reason=UNAUTHENTICATED} (như HRM). */
-    static void write(HttpServletRequest req, HttpServletResponse res, HttpStatus status, String reason, String detail)
+    /** {@code code} theo HTTP: 401 = {@code UNAUTHORIZED}, 403 = {@code FORBIDDEN} (docs/kien-truc-chuan.md mục 3.1). */
+    static void write(HttpServletRequest req, HttpServletResponse res, HttpStatus status, String detail)
             throws IOException {
         if (res.isCommitted()) {
             return;
@@ -49,8 +49,7 @@ public final class ProblemResponses {
         res.setCharacterEncoding(StandardCharsets.UTF_8.name());
         res.getWriter().write("{\"type\":\"about:blank\",\"title\":\"" + status.getReasonPhrase()
                 + "\",\"status\":" + status.value() + ",\"detail\":\"" + detail + "\",\"instance\":\""
-                + escape(req.getRequestURI()) + "\",\"code\":\"" + ApiErrorCode.FORBIDDEN + "\""
-                + (reason == null ? "" : ",\"reason\":\"" + reason + "\"") + "}");
+                + escape(req.getRequestURI()) + "\",\"code\":\"" + ApiErrorCode.fromStatus(status.value()) + "\"}");
     }
 
     private static String escape(String s) {

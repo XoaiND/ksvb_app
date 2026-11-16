@@ -70,8 +70,6 @@ spring:
     multipart:
       max-file-size: 20MB
       max-request-size: 25MB
-  jackson:
-    default-property-inclusion: non_null
 
 ksvb:
   security:

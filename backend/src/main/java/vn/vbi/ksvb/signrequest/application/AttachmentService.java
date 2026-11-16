@@ -11,12 +11,15 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vbi.ksvb.config.KsvbProperties;
 import vn.vbi.ksvb.shared.audit.AuditService;
 import vn.vbi.ksvb.shared.error.BusinessException;
+import vn.vbi.ksvb.shared.error.ConflictException;
+import vn.vbi.ksvb.shared.error.NotFoundException;
 import vn.vbi.ksvb.signrequest.domain.Attachment;
 import vn.vbi.ksvb.signrequest.domain.DocStatus;
 import vn.vbi.ksvb.signrequest.domain.SignRequest;
@@ -45,21 +48,21 @@ public class AttachmentService {
     @Transactional
     public AttachmentDto upload(AppUser me, Long requestId, MultipartFile file, boolean signable) {
         SignRequest r = requests.findById(requestId)
-                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy văn bản"));
+                .orElseThrow(() -> new NotFoundException("Văn bản", requestId));
         if (!r.isCreator(me.getId())) {
-            throw BusinessException.forbidden("Chỉ người tạo mới được thêm tệp");
+            throw new AccessDeniedException("Chỉ người tạo mới được thêm tệp");
         }
         if (r.getStatus() != DocStatus.DRAFT) {
-            throw BusinessException.conflict("Chỉ thêm được tệp khi văn bản là bản nháp");
+            throw new ConflictException("NOT_DRAFT", "Chỉ thêm được tệp khi văn bản là bản nháp");
         }
         if (file == null || file.isEmpty()) {
-            throw BusinessException.invalid("Tệp rỗng");
+            throw new BusinessException("EMPTY_FILE", "Tệp rỗng");
         }
 
         String original = cleanName(file.getOriginalFilename());
         String ext = extensionOf(original);
         if (!(signable ? SIGNABLE_EXT : REFERENCE_EXT).contains(ext)) {
-            throw BusinessException.invalid(signable
+            throw new BusinessException("INVALID_FILE_TYPE", signable
                     ? "Tệp cần ký phải là PDF"
                     : "Định dạng tệp không được hỗ trợ (PDF, DOC(X), XLS(X), PNG, ZIP, RAR)");
         }
@@ -69,11 +72,11 @@ public class AttachmentService {
             Files.createDirectories(baseDir);
             Path target = baseDir.resolve(stored).normalize();
             if (!target.startsWith(baseDir)) {
-                throw BusinessException.invalid("Tên tệp không hợp lệ");
+                throw new BusinessException("INVALID_FILE_NAME", "Tên tệp không hợp lệ");
             }
             try (InputStream in = file.getInputStream()) {
                 if (ext.equals("pdf") && !looksLikePdf(in)) {
-                    throw BusinessException.invalid("Nội dung tệp không phải PDF hợp lệ");
+                    throw new BusinessException("INVALID_PDF", "Nội dung tệp không phải PDF hợp lệ");
                 }
             }
             try (InputStream in = file.getInputStream()) {
@@ -95,15 +98,15 @@ public class AttachmentService {
     @Transactional(readOnly = true)
     public Download download(AppUser me, Long requestId, Long attachmentId) {
         SignRequest r = requests.findById(requestId)
-                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy văn bản"));
+                .orElseThrow(() -> new NotFoundException("Văn bản", requestId));
         if (!r.canView(me)) {
-            throw BusinessException.forbidden("Bạn không có quyền xem văn bản này");
+            throw new AccessDeniedException("Bạn không có quyền xem văn bản này");
         }
         Attachment a = r.getAttachments().stream().filter(x -> x.getId().equals(attachmentId)).findFirst()
-                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy tệp đính kèm"));
+                .orElseThrow(() -> new NotFoundException("Tệp đính kèm", attachmentId));
         Path file = baseDir.resolve(a.getStoredName()).normalize();
         if (!file.startsWith(baseDir) || !Files.isReadable(file)) {
-            throw BusinessException.notFound("Tệp không còn trên máy chủ");
+            throw new NotFoundException("Tệp trên máy chủ của tệp đính kèm", attachmentId);
         }
         return new Download(new FileSystemResource(file), a.getOriginalName());
     }
@@ -111,9 +114,9 @@ public class AttachmentService {
     @Transactional
     public void remove(AppUser me, Long requestId, Long attachmentId) {
         SignRequest r = requests.findById(requestId)
-                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy văn bản"));
+                .orElseThrow(() -> new NotFoundException("Văn bản", requestId));
         if (!r.isCreator(me.getId())) {
-            throw BusinessException.forbidden("Chỉ người tạo mới được xoá tệp");
+            throw new AccessDeniedException("Chỉ người tạo mới được xoá tệp");
         }
         r.removeAttachment(attachmentId);
         audit.log(me.getId(), "DETACH", "SignRequest#" + r.getId(), "Attachment#" + attachmentId);

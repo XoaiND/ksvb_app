@@ -1,4 +1,4 @@
-package vn.vbi.ksvb.config;
+package vn.vbi.ksvb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,9 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -18,10 +16,8 @@ import org.springframework.test.web.servlet.MockMvc;
  * Luôn ghi {@code target/openapi.json} (CI so với bản frontend dùng); đặt
  * {@code -Dksvb.openapi.out=../frontend/openapi/openapi.json} để cập nhật bản đó, rồi {@code npm run gen:api}.
  */
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("it")
-class OpenApiExportTest {
+class OpenApiExportTest extends PostgresIntegrationTest {
 
     @Autowired MockMvc mvc;
 

@@ -342,6 +342,8 @@ export interface components {
             shared?: boolean;
             signerIds: number[];
             watcherIds?: number[];
+            /** Format: int32 */
+            versionNo?: number;
         };
         AttachmentDto: {
             /** Format: int64 */
@@ -410,6 +412,8 @@ export interface components {
             canRecall: boolean;
             canDelete: boolean;
             canEdit: boolean;
+            /** Format: int32 */
+            versionNo: number;
         };
         SaveTemplate: {
             name: string;
