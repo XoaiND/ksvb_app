@@ -1,4 +1,4 @@
-# Bien moi truong (chi commit file .env.example)
+# Biến môi trường (chỉ commit file .env.example)
 .env
 .env.*
 !.env.example
@@ -8,24 +8,23 @@
 .vscode/
 *.iml
 
-# Build / dependency
+# Build / dependency / kết quả chạy
 node_modules/
 dist/
 target/
-bin/
-obj/
 *.tsbuildinfo
-
-# He dieu hanh
-.DS_Store
-Thumbs.db
-
-# Playwright
 test-results/
 playwright-report/
 
-# Riêng KSVB: tệp tải lên khi chạy cục bộ, chứng thư số
+# Dữ liệu chạy cục bộ (tệp tải lên, log), chứng thư số, file khoá của Office
 data/
 logs/
 *.pfx
 ~$*
+
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Bản .NET cũ đã bỏ khỏi repo (còn trong lịch sử git)
+backend-dotnet/

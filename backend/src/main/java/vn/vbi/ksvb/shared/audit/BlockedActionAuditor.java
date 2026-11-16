@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import vn.vbi.ksvb.shared.security.CurrentUser;
 
 /**
  * Ghi nhật ký {@code result = ERROR} cho thao tác GHI bị chặn (thiếu quyền, sai trạng thái, vi phạm luật nghiệp vụ).
@@ -17,26 +16,15 @@ public class BlockedActionAuditor {
     private static final Logger log = LoggerFactory.getLogger(BlockedActionAuditor.class);
 
     private final AuditService audit;
-    private final CurrentUser currentUser;
 
-    public BlockedActionAuditor(AuditService audit, CurrentUser currentUser) {
+    public BlockedActionAuditor(AuditService audit) {
         this.audit = audit;
-        this.currentUser = currentUser;
     }
 
     public void record(HttpServletRequest req, String code, String message) {
-        if (req == null || !isWrite(req.getMethod()) || !req.getRequestURI().startsWith("/api/")) {
-            return;
-        }
+        if (req == null || !isWrite(req.getMethod()) || !req.getRequestURI().startsWith("/api/")) return;
         try {
-            Long actor = null;
-            String who = "";
-            try {
-                actor = currentUser.get().getId();
-            } catch (RuntimeException e) {
-                who = req.getUserPrincipal() == null ? "" : " (" + req.getUserPrincipal().getName() + ")";
-            }
-            audit.logBlocked(actor, ACTION, req.getMethod() + " " + req.getRequestURI(), code + ": " + message + who);
+            audit.logBlocked(ACTION, req.getMethod() + " " + req.getRequestURI(), code + ": " + message);
         } catch (RuntimeException e) {
             log.warn("Không ghi được nhật ký thao tác bị chặn: {}", e.getMessage());
         }

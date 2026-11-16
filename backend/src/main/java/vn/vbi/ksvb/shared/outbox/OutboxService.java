@@ -1,32 +1,39 @@
 package vn.vbi.ksvb.shared.outbox;
 
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+import vn.vbi.ksvb.shared.audit.AuditService;
 
 /**
- * Ghi sự kiện vào {@code ksvb_outbox} trong CÙNG transaction với thay đổi nghiệp vụ (ECOSYSTEM.md 12.2): nghiệp vụ
- * huỷ thì sự kiện cũng huỷ. Worker đẩy sự kiện đi (Kafka/HTTP) làm sau, đọc các dòng {@code status = NEW}.
+ * Ghi su kien vao ksvb_outbox trong CUNG transaction voi thay doi nghiep vu
+ * (MANDATORY: bat buoc dang co transaction). Worker rieng doc bang nay va day len Kafka.
  */
 @Service
 public class OutboxService {
 
-    private final OutboxRepository repo;
-    private final ObjectMapper json;
 
-    public OutboxService(OutboxRepository repo, ObjectMapper json) {
+    private final OutboxRepository repo;
+    private final ObjectMapper mapper;
+    private final AuditService audit;
+
+    public OutboxService(OutboxRepository repo, ObjectMapper mapper, AuditService audit) {
         this.repo = repo;
-        this.json = json;
+        this.mapper = mapper;
+        this.audit = audit;
     }
 
-    /** Bắt buộc gọi trong transaction đang mở (MANDATORY): không có thì báo lỗi thay vì ghi lẻ. */
     @Transactional(propagation = Propagation.MANDATORY)
-    public OutboxEvent publish(String aggregateType, Object aggregateId, String aggregateCode, String eventType,
-                               Map<String, ?> payload) {
-        return repo.save(new OutboxEvent(aggregateType, String.valueOf(aggregateId), aggregateCode, eventType,
-                json.writeValueAsString(payload), LocalDateTime.now()));
+    public void publish(String aggregateType, UUID aggregateId, String aggregateCode, String eventType,
+                        Integer version, Object payload, LocalDate effectiveFrom) {
+        // Jackson 3: loi serialize la JacksonException (unchecked)
+        String json = mapper.writeValueAsString(payload);
+        repo.save(new OutboxEvent(aggregateType, aggregateId, aggregateCode, eventType,
+                version == null ? 0 : version, json, effectiveFrom));
+        audit.log(eventType, aggregateType + " " + (aggregateCode != null ? aggregateCode : aggregateId),
+                effectiveFrom == null ? null : "hiệu lực " + effectiveFrom);
     }
 }

@@ -1,11 +1,6 @@
 package vn.vbi.ksvb.user.infra;
 
-import java.util.List;
 import java.util.Optional;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import vn.vbi.ksvb.shared.security.DevUserResolver;
 import vn.vbi.ksvb.shared.security.Permissions;
@@ -27,12 +22,15 @@ public class AppUserDevResolver implements DevUserResolver {
     }
 
     @Override
-    public Optional<Authentication> resolve(String userId) {
-        long id = userId == null || userId.isBlank() ? DEFAULT_USER : Long.parseLong(userId.trim());
-        return users.findById(id).filter(AppUser::isActive).map(u -> {
-            List<GrantedAuthority> authorities = Permissions.forDevRole(u.getRole()).stream()
-                    .map(p -> (GrantedAuthority) new SimpleGrantedAuthority(p)).toList();
-            return UsernamePasswordAuthenticationToken.authenticated(u.getEmail(), null, authorities);
-        });
+    public Optional<DevUser> resolve(String userIdHeader) {
+        long id;
+        try {
+            id = userIdHeader == null || userIdHeader.isBlank() ? DEFAULT_USER : Long.parseLong(userIdHeader.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("X-User-Id phải là số", e);
+        }
+        return users.findById(id)
+                .filter(AppUser::isActive)
+                .map(u -> new DevUser(u.getEmail(), Permissions.forDevRole(u.getRole())));
     }
 }

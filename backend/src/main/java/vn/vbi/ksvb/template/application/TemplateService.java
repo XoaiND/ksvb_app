@@ -39,7 +39,7 @@ public class TemplateService {
     public TemplateDto create(AppUser me, SaveTemplate in) {
         validateSigners(in.signerIds());
         SignTemplate t = templates.save(new SignTemplate(in.name().trim(), in.mode(), me.getId(), in.signerIds()));
-        audit.log(me.getId(), "CREATE_TEMPLATE", "Template#" + t.getId(), t.getName());
+        audit.log("CREATE_TEMPLATE", "Template#" + t.getId(), t.getName());
         return toDto(t);
     }
 
@@ -55,7 +55,7 @@ public class TemplateService {
     public void delete(AppUser me, Long id) {
         SignTemplate t = owned(me, id);
         templates.delete(t);
-        audit.log(me.getId(), "DELETE_TEMPLATE", "Template#" + id, t.getName());
+        audit.log("DELETE_TEMPLATE", "Template#" + id, t.getName());
     }
 
     private SignTemplate owned(AppUser me, Long id) {

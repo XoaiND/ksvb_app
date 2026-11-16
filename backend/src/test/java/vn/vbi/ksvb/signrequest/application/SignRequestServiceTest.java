@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,7 +18,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.vbi.ksvb.PostgresIntegrationTest;
-import vn.vbi.ksvb.shared.outbox.OutboxEvent;
 import vn.vbi.ksvb.shared.outbox.OutboxRepository;
 import vn.vbi.ksvb.shared.outbox.OutboxService;
 import vn.vbi.ksvb.signrequest.domain.DocStatus;
@@ -90,15 +90,17 @@ class SignRequestServiceTest extends PostgresIntegrationTest {
         service.submit(creator, id);
         service.sign(signer, id, null);
 
-        List<String> types = outbox.findByAggregateTypeAndAggregateIdOrderByOccurredAtAsc(
-                SignRequestEvents.AGGREGATE, String.valueOf(id)).stream().map(OutboxEvent::getEventType).toList();
+        String agg = new UUID(0L, id).toString();
+        List<String> types = jdbc.queryForList("select event_type from ksvb.ksvb_outbox where aggregate_type = ?"
+                + " and aggregate_id = ?::uuid order by occurred_at, event_id", String.class, SignRequestEvents.AGGREGATE, agg);
         assertThat(types).containsExactly(SignRequestEvents.SUBMITTED, SignRequestEvents.SIGNED,
                 SignRequestEvents.COMPLETED);
-        var first = outbox.findByAggregateTypeAndAggregateIdOrderByOccurredAtAsc(SignRequestEvents.AGGREGATE,
-                String.valueOf(id)).get(0);
-        assertThat(first.getStatus()).isEqualTo("NEW");
-        assertThat(first.getAggregateCode()).startsWith("CV-");
-        assertThat(first.getPayload()).contains("\"status\":\"PENDING\"");
+        var first = jdbc.queryForMap("select status, aggregate_code, payload::text as payload from ksvb.ksvb_outbox"
+                + " where aggregate_type = ? and aggregate_id = ?::uuid order by occurred_at, event_id limit 1",
+                SignRequestEvents.AGGREGATE, agg);
+        assertThat(first.get("status")).isEqualTo("NEW");
+        assertThat((String) first.get("aggregate_code")).startsWith("CV-");
+        assertThat((String) first.get("payload")).contains("\"status\": \"PENDING\"");
 
         // cột audit chung (V3): trigger cập nhật updated_at, version_no tăng mỗi lần sửa; created_by ghi người tạo
         var audit = jdbc.queryForMap("select version_no, created_by, created_at, updated_at from ksvb.sign_request where id = ?", id);
@@ -109,8 +111,8 @@ class SignRequestServiceTest extends PostgresIntegrationTest {
 
         // ký lại khi đã hoàn thành → lỗi, transaction huỷ: không thêm sự kiện
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.sign(signer, id, null));
-        assertThat(outbox.findByAggregateTypeAndAggregateIdOrderByOccurredAtAsc(SignRequestEvents.AGGREGATE,
-                String.valueOf(id))).hasSize(3);
+        assertThat(jdbc.queryForObject("select count(*) from ksvb.ksvb_outbox where aggregate_type = ? and aggregate_id = ?::uuid", Integer.class,
+                SignRequestEvents.AGGREGATE, new UUID(0L, id).toString())).isEqualTo(3);
     }
 
     @Test
@@ -129,7 +131,7 @@ class SignRequestServiceTest extends PostgresIntegrationTest {
 
     @Test
     void outboxBatBuocCoTransaction() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> outboxService.publish("X", 1, null, "Y", Map.of()))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> outboxService.publish("X", new UUID(0L, 1L), null, "Y", 0, Map.of(), null))
                 .isInstanceOf(org.springframework.transaction.IllegalTransactionStateException.class);
     }
 

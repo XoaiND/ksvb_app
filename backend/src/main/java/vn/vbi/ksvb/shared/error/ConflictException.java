@@ -2,27 +2,19 @@ package vn.vbi.ksvb.shared.error;
 
 import java.util.Map;
 
-/**
- * Xung đột trạng thái (sai trạng thái, chưa đến lượt, người khác vừa sửa): HTTP 409, {@code code=CONFLICT},
- * {@code reason} = mã chi tiết, kèm thuộc tính bổ sung tuỳ chọn.
- */
+/** Xung đột trạng thái, trả HTTP 409 kèm mã lỗi và các thuộc tính bổ sung (vd danh sách nhóm đang dùng quyền). */
 public class ConflictException extends RuntimeException {
-
-    private final String reason;
+    private final String code;
     private final transient Map<String, Object> properties;
 
-    public ConflictException(String reason, String message) {
-        this(reason, message, Map.of());
-    }
-
-    public ConflictException(String reason, String message, Map<String, Object> properties) {
+    public ConflictException(String code, String message, Map<String, Object> properties) {
         super(message);
-        this.reason = reason;
+        this.code = code;
         this.properties = properties == null ? Map.of() : properties;
     }
 
-    public String getReason() {
-        return reason;
+    public String getCode() {
+        return code;
     }
 
     public Map<String, Object> getProperties() {

@@ -27,9 +27,7 @@ class ApiDocsProfileTest {
     }
 
     @Nested
-    @SpringBootTest(properties = {
-            "ksvb.storage.path=./target/test-upload"
-    })
+    @SpringBootTest
     @AutoConfigureMockMvc
     @ActiveProfiles({"it", "prod"})
     class Prod extends PostgresIntegrationTest {

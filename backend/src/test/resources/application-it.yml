@@ -1,17 +1,17 @@
-# Profile "it": test tích hợp với PostgreSQL trong Testcontainers (datasource do @ServiceConnection cấp,
-# lớp nền PostgresIntegrationTest). Không dùng H2.
+# Profile "it": test tich hop voi Postgres trong Testcontainers (datasource do @ServiceConnection cap).
 spring:
   config:
-    import: ""                 # không đọc backend/.env của máy dev
-  datasource:
-    password: test             # bị ghi đè bởi @ServiceConnection; chỉ để không thiếu KSVB_DB_PASSWORD
+    import: ""                 # khong doc backend/.env cua may dev
+  flyway:
+    baseline-on-migrate: false # DB trong: chay ca V1
+    schemas: public            # khoa rieng cua ksvb: schema test
+    default-schema: public
   jpa:
     properties:
       hibernate:
         default_schema: public
-  flyway:
-    schemas: public
-    default-schema: public
+  datasource:
+    password: test             # bi ghi de boi @ServiceConnection; chi de khong thieu KSVB_DB_PASSWORD
   security:
     oauth2:
       resourceserver:
@@ -20,7 +20,7 @@ spring:
 
 ksvb:
   security:
-    enabled: false      # chế độ dev: người dùng theo X-User-Id; test JWT bật riêng trong JwtModeApiTest
+    enabled: false             # che do dev: nguoi dung theo X-User-Id; test JWT bat rieng trong JwtModeApiTest
   storage:
-    path: ./target/test-upload
-  seed-demo: true
+    path: ./target/test-upload # khoa rieng cua ksvb
+  seed-demo: true              # khoa rieng cua ksvb: nap du lieu mau (DemoDataLoader)

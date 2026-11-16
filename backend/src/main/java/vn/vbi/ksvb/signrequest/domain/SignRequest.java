@@ -190,10 +190,10 @@ public class SignRequest extends Auditable {
         Participant p = participantOf(userId);
         if (p.getStatus() == SignerStatus.WAITING) {
             throw new ConflictException("NOT_YOUR_TURN",
-                    "Quy trình đang ở bước trước. Hệ thống sẽ thông báo khi đến lượt của bạn.");
+                    "Quy trình đang ở bước trước. Hệ thống sẽ thông báo khi đến lượt của bạn.", null);
         }
         if (p.getStatus() != SignerStatus.PENDING) {
-            throw new ConflictException("ALREADY_ACTED", "Bạn đã xử lý văn bản này");
+            throw new ConflictException("ALREADY_ACTED", "Bạn đã xử lý văn bản này", null);
         }
         p.markSigned(note, now);
         if (participants.stream().allMatch(x -> x.getStatus() == SignerStatus.SIGNED)) {
@@ -212,7 +212,7 @@ public class SignRequest extends Auditable {
         }
         Participant p = participantOf(userId);
         if (p.getStatus() != SignerStatus.PENDING) {
-            throw new ConflictException("CANNOT_REJECT", "Bạn không thể từ chối văn bản này ở thời điểm hiện tại");
+            throw new ConflictException("CANNOT_REJECT", "Bạn không thể từ chối văn bản này ở thời điểm hiện tại", null);
         }
         p.markRejected(reason.trim(), now);
         this.status = DocStatus.REJECTED;
@@ -223,7 +223,7 @@ public class SignRequest extends Auditable {
         requireCreator(actorId, "Chỉ người tạo mới được huỷ văn bản");
         requireStatus(DocStatus.PENDING, "Văn bản không thể huỷ ở trạng thái hiện tại");
         if (anyoneActed()) {
-            throw new ConflictException("ALREADY_ACTED", "Đã có người ký hoặc từ chối nên không thể huỷ");
+            throw new ConflictException("ALREADY_ACTED", "Đã có người ký hoặc từ chối nên không thể huỷ", null);
         }
         if (reason == null || reason.isBlank()) {
             throw new BusinessException("REASON_REQUIRED", "Cần nhập lý do huỷ");
@@ -237,7 +237,7 @@ public class SignRequest extends Auditable {
         requireCreator(actorId, "Chỉ người tạo mới được thu hồi văn bản");
         requireStatus(DocStatus.PENDING, "Chỉ thu hồi được văn bản đang chờ ký");
         if (anyoneActed()) {
-            throw new ConflictException("ALREADY_ACTED", "Đã có người ký hoặc từ chối nên không thể thu hồi");
+            throw new ConflictException("ALREADY_ACTED", "Đã có người ký hoặc từ chối nên không thể thu hồi", null);
         }
         this.status = DocStatus.DRAFT;
         this.submittedAt = null;
@@ -309,7 +309,7 @@ public class SignRequest extends Auditable {
 
     private void requireStatus(DocStatus expected, String message) {
         if (status != expected) {
-            throw new ConflictException("INVALID_STATUS", message);
+            throw new ConflictException("INVALID_STATUS", message, null);
         }
     }
 

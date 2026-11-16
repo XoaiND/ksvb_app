@@ -4,40 +4,44 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import vn.vbi.ksvb.KsvbApplication;
 
-/** Profile prod từ chối khởi động nếu tắt bảo mật (không cho bỏ qua đăng nhập ở môi trường thật). */
+/** Profile prod không được khởi động khi tắt bảo mật (bỏ qua đăng nhập). */
 @Testcontainers(disabledWithoutDocker = true)
 class ProdSecurityGuardTest {
 
-    @Configuration(proxyBeanMethods = false)
-    static class Db {
-        @Bean
-        @ServiceConnection
-        PostgreSQLContainer postgres() {
-            return new PostgreSQLContainer("postgres:17-alpine");
-        }
+    @Container
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17-alpine");
+
+    private ConfigurableApplicationContext run(String... extra) {
+        String[] base = {
+            "--server.port=0",
+            "--spring.profiles.active=it,prod",
+            "--spring.datasource.url=" + POSTGRES.getJdbcUrl(),
+            "--spring.datasource.username=" + POSTGRES.getUsername(),
+            "--spring.datasource.password=" + POSTGRES.getPassword(),
+        };
+        String[] all = new String[base.length + extra.length];
+        System.arraycopy(base, 0, all, 0, base.length);
+        System.arraycopy(extra, 0, all, base.length, extra.length);
+        return new SpringApplicationBuilder(KsvbApplication.class).run(all);
     }
 
     @Test
-    void prodTatBaoMatKhongKhoiDong() {
-        SpringApplicationBuilder app = new SpringApplicationBuilder(KsvbApplication.class, Db.class)
-                .web(WebApplicationType.SERVLET)
-                .profiles("it", "prod")
-                .properties("server.port=0");
-        assertThatThrownBy(() -> app.run("--ksvb.security.enabled=false").close()).satisfies(e -> {
-            Throwable root = e;
-            while (root.getCause() != null) {
-                root = root.getCause();
-            }
-            assertThat(root).isInstanceOf(IllegalStateException.class).hasMessageContaining("profile prod");
-        });
+    void prodTuChoiKhiTatBaoMat() {
+        assertThatThrownBy(() -> run("--ksvb.security.enabled=false"))
+                .hasStackTraceContaining("không được phép khi chạy profile prod");
+    }
+
+    @Test
+    void prodKhoiDongBinhThuongKhiBatBaoMat() {
+        try (var ctx = run("--ksvb.security.enabled=true")) {
+            assertThat(ctx.isActive()).isTrue();
+        }
     }
 }

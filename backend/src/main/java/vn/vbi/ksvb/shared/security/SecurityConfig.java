@@ -13,7 +13,6 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,20 +27,30 @@ import vn.vbi.ksvb.config.KsvbProperties;
 import vn.vbi.ksvb.shared.error.ProblemResponses;
 
 /**
- * Giống HRM: xác thực bằng JWT Keycloak, quyền lấy từ resource_access.{roleClient}.roles và giữ nguyên tên
- * làm authority (xem {@link Permissions}); kiểm bằng {@code @PreAuthorize}.
- * ksvb.security.enabled=false chỉ dành cho dev/test và bị chặn khi chạy profile prod.
+ * Xac thuc bang JWT do Keycloak cap.
+ * Quyen lay tu resource_access.{ksvb.security.role-client}.roles, giu nguyen ten lam authority
+ * (vd "employee.view") - xem {@link Permissions}.
+ * Khi ksvb.security.enabled=false: bo qua xac thuc va gan san tat ca quyen (chi dung khi dev).
  */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final KsvbProperties props;
+    private final Environment env;
+    private final DevUserResolver devUsers;
+
+    public SecurityConfig(KsvbProperties props, Environment env, DevUserResolver devUsers) {
+        this.props = props;
+        this.env = env;
+        this.devUsers = devUsers;
+    }
+
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, KsvbProperties props, DevUserResolver devUsers, Environment env)
-            throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(c -> c.disable())
+            .cors(Customizer.withDefaults())
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         if (!props.security().enabled()) {
             if (env.acceptsProfiles(Profiles.of("prod"))) {
@@ -49,52 +58,52 @@ public class SecurityConfig {
                         "ksvb.security.enabled=false không được phép khi chạy profile prod (bỏ qua đăng nhập)");
             }
             http.authorizeHttpRequests(a -> a.anyRequest().permitAll())
-                    .addFilterAfter(new DevUserFilter(devUsers), AnonymousAuthenticationFilter.class);
+                .addFilterAfter(new DevUserFilter(devUsers), AnonymousAuthenticationFilter.class);
             return http.build();
         }
 
-        String roleClient = props.security().roleClient();
         http.authorizeHttpRequests(a -> a
-                        // /error: để lỗi thật (500...) không bị denyAll biến thành 403 rỗng; Swagger mở như HRM
-                        .requestMatchers("/error", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**",
-                                "/swagger-ui.html").permitAll()
-                        .requestMatchers("/actuator/**").hasAuthority(Permissions.SYSTEM_MONITOR)
-                        .requestMatchers("/api/**").authenticated()
-                        .anyRequest().denyAll())
-                .exceptionHandling(e -> e.authenticationEntryPoint(ProblemResponses.entryPoint())
-                        .accessDeniedHandler(ProblemResponses.accessDenied()))
-                .oauth2ResourceServer(o -> o
-                        .authenticationEntryPoint(ProblemResponses.entryPoint())
-                        .accessDeniedHandler(ProblemResponses.accessDenied())
-                        .jwt(j -> j.jwtAuthenticationConverter(jwtConverter(roleClient))));
+                // /error: de loi that (500...) khong bi denyAll bien thanh 403 rong
+                .requestMatchers("/error", "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // chi so pool/thread, thread dump: chi danh cho nguoi van hanh
+                .requestMatchers("/actuator/**").hasAuthority(Permissions.SYSTEM_MONITOR)
+                .requestMatchers("/api/**").authenticated()
+                .anyRequest().denyAll())
+            .oauth2ResourceServer(o -> o
+                .jwt(j -> j.jwtAuthenticationConverter(jwtConverter()))
+                .authenticationEntryPoint(ProblemResponses::unauthorized)
+                .accessDeniedHandler(ProblemResponses::forbidden))
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint(ProblemResponses::unauthorized)
+                .accessDeniedHandler(ProblemResponses::forbidden));
         return http.build();
     }
 
-    private static Converter<Jwt, AbstractAuthenticationToken> jwtConverter(String roleClient) {
-        return jwt -> new JwtAuthenticationToken(jwt, extractAuthorities(jwt, roleClient),
-                jwt.getClaimAsString("preferred_username"));
+    private Converter<Jwt, AbstractAuthenticationToken> jwtConverter() {
+        return jwt -> new JwtAuthenticationToken(jwt, extractAuthorities(jwt), jwt.getClaimAsString("preferred_username"));
     }
 
-    static Collection<GrantedAuthority> extractAuthorities(Jwt jwt, String roleClient) {
+    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
         List<String> roles = new ArrayList<>();
         Map<String, Object> resource = jwt.getClaimAsMap("resource_access");
-        if (resource != null && resource.get(roleClient) instanceof Map<?, ?> client
+        if (resource != null && resource.get(props.security().roleClient()) instanceof Map<?, ?> client
                 && client.get("roles") instanceof Collection<?> r) {
             r.forEach(x -> roles.add(String.valueOf(x)));
         }
-        return roles.stream().distinct().map(r -> (GrantedAuthority) new SimpleGrantedAuthority(r)).toList();
+        return roles.stream().distinct()
+                .map(r -> (GrantedAuthority) new SimpleGrantedAuthority(r))
+                .toList();
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(KsvbProperties props) {
+    CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration c = new CorsConfiguration();
         c.setAllowedOrigins(props.cors().allowedOrigins());
-        c.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         c.setAllowedHeaders(List.of("*"));
-        c.setExposedHeaders(List.of("Content-Disposition"));
         c.setMaxAge(3600L);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", c);
-        return source;
+        UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
+        src.registerCorsConfiguration("/**", c);
+        return src;
     }
 }

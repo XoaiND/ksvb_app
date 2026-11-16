@@ -1,16 +1,15 @@
 package vn.vbi.ksvb.shared.error;
 
-/** Vi phạm luật nghiệp vụ: HTTP 422, {@code code=BUSINESS_RULE}, {@code reason} = mã chi tiết (có thể null). */
+/** Loi nghiep vu, tra ve HTTP 422 kem ma loi. */
 public class BusinessException extends RuntimeException {
+    private final String code;
 
-    private final String reason;
-
-    public BusinessException(String reason, String message) {
+    public BusinessException(String code, String message) {
         super(message);
-        this.reason = reason;
+        this.code = code;
     }
 
-    public String getReason() {
-        return reason;
+    public String getCode() {
+        return code;
     }
 }

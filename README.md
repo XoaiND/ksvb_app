@@ -51,7 +51,7 @@ Mọi biến của backend có tiền tố `KSVB_` (không đọc tên cũ khôn
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `KSVB_DB_URL` / `KSVB_DB_USER` / `KSVB_DB_PASSWORD` / `KSVB_DB_SCHEMA` | `jdbc:postgresql://localhost:5432/ksvb` / `ksvb_app` / (bắt buộc) / `ksvb` | Kết nối PostgreSQL |
-| `KSVB_KEYCLOAK_ISSUER` | `https://sso.xoaind.io.vn/realms/dev` | Phải trùng claim `iss` của token (địa chỉ trình duyệt thấy) |
+| `KSVB_OIDC_ISSUER_URI` | `http://localhost:8080/realms/dev` | Phải trùng claim `iss` của token (địa chỉ trình duyệt thấy) |
 | `KSVB_SECURITY_ENABLED` / `KSVB_ROLE_CLIENT` | `true` / `ksvb-api` | Bắt buộc đăng nhập / client chứa quyền |
 | `KSVB_CORS_ORIGINS` | `http://localhost:5174,http://127.0.0.1:5174,http://localhost:3001` | Origin được gọi API |
 | `KSVB_STORAGE_PATH` | `./data/upload` (prod: `/app/data/upload`) | Thư mục lưu tệp PDF tải lên |
@@ -139,7 +139,7 @@ docker compose up -d --build   # frontend: http://localhost:3001, backend: http:
 |---|---|
 | Backend không khởi động: `Schema validation` | Entity lệch bảng. Thêm migration `V<n>__...sql` (không sửa file đã áp dụng, kể cả chú thích) |
 | Backend không khởi động ở `prod` khi `KSVB_SECURITY_ENABLED=false` | Cố ý chặn; bỏ biến đó |
-| Mọi API trả 401 dù đã đăng nhập | `KSVB_KEYCLOAK_ISSUER` không trùng `iss` của token; trong Docker đặt thêm `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` |
+| Mọi API trả 401 dù đã đăng nhập | `KSVB_OIDC_ISSUER_URI` không trùng `iss` của token; trong Docker đặt thêm `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` |
 | API trả 403 dù có role | Token thiếu `aud=ksvb-api` hoặc client role; đăng xuất rồi đăng nhập lại ([phan-quyen.md](docs/phan-quyen.md)) |
 | Menu/trang trống sau khi đổi quyền | Đăng xuất rồi đăng nhập lại để token có role mới |
 | Sửa văn bản báo 409 `CONCURRENT_UPDATE` | Người khác vừa sửa; tải lại trang rồi sửa tiếp |

@@ -53,7 +53,7 @@ public class AttachmentService {
             throw new AccessDeniedException("Chỉ người tạo mới được thêm tệp");
         }
         if (r.getStatus() != DocStatus.DRAFT) {
-            throw new ConflictException("NOT_DRAFT", "Chỉ thêm được tệp khi văn bản là bản nháp");
+            throw new ConflictException("NOT_DRAFT", "Chỉ thêm được tệp khi văn bản là bản nháp", null);
         }
         if (file == null || file.isEmpty()) {
             throw new BusinessException("EMPTY_FILE", "Tệp rỗng");
@@ -88,7 +88,7 @@ public class AttachmentService {
 
         Attachment a = r.addAttachment(original, stored, file.getSize(), signable, LocalDateTime.now());
         requests.saveAndFlush(r);
-        audit.log(me.getId(), "ATTACH", "SignRequest#" + r.getId(), original + (signable ? " (cần ký)" : ""));
+        audit.log("ATTACH", "SignRequest#" + r.getId(), original + (signable ? " (cần ký)" : ""));
         return AttachmentDto.of(a);
     }
 
@@ -119,7 +119,7 @@ public class AttachmentService {
             throw new AccessDeniedException("Chỉ người tạo mới được xoá tệp");
         }
         r.removeAttachment(attachmentId);
-        audit.log(me.getId(), "DETACH", "SignRequest#" + r.getId(), "Attachment#" + attachmentId);
+        audit.log("DETACH", "SignRequest#" + r.getId(), "Attachment#" + attachmentId);
     }
 
     private static boolean looksLikePdf(InputStream in) throws IOException {

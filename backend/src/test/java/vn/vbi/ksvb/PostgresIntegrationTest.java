@@ -11,9 +11,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * Nền cho test tích hợp: PostgreSQL thật trong Docker (Testcontainers), Flyway chạy V1..Vn rồi Hibernate
- * {@code ddl-auto=validate}. Container là bean nên sống cùng context Spring được cache (mỗi cấu hình context một
- * container, dữ liệu tách biệt). Không có Docker thì test bị bỏ qua. Cấu hình riêng ở
- * {@code src/test/resources/application-it.yml}.
+ * {@code ddl-auto=validate}. Container là bean nên sống cùng context Spring được cache (dùng chung cho mọi lớp con).
+ * Không có Docker thì test bị bỏ qua. Cấu hình riêng ở {@code src/test/resources/application-it.yml}.
  */
 @SpringBootTest
 @ActiveProfiles("it")

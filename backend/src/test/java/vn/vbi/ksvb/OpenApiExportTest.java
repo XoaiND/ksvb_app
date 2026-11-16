@@ -1,33 +1,44 @@
 package vn.vbi.ksvb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 
 /**
- * Xuất đặc tả OpenAPI ({@code /v3/api-docs}) để frontend sinh kiểu TypeScript (docs/kien-truc-chuan.md).
- * Luôn ghi {@code target/openapi.json} (CI so với bản frontend dùng); đặt
- * {@code -Dksvb.openapi.out=../frontend/openapi/openapi.json} để cập nhật bản đó, rồi {@code npm run gen:api}.
+ * Xuất đặc tả OpenAPI ({@code /v3/api-docs}) của backend chạy thật để frontend sinh kiểu TypeScript (ECOSYSTEM.md 12.3).
+ * Luôn ghi {@code target/openapi.json}; đặt {@code -Dksvb.openapi.out=../frontend/openapi/openapi.json} để cập nhật bản
+ * frontend dùng, rồi chạy {@code npm run gen:api} trong {@code frontend/}.
  */
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OpenApiExportTest extends PostgresIntegrationTest {
 
-    @Autowired MockMvc mvc;
+    @Autowired
+    Environment env;
 
     @Test
-    void xuatSpecOpenApi() throws Exception {
-        String spec = mvc.perform(get("/v3/api-docs")).andReturn().getResponse()
-                .getContentAsString(StandardCharsets.UTF_8);
-        assertThat(spec).contains("\"/api/sign-requests\"");
-        // bỏ "servers" (phụ thuộc môi trường chạy test) để đặc tả ổn định giữa các lần xuất
-        spec = spec.replaceFirst("\"servers\":\\[[^\\]]*\\],?", "");
+    void exportOpenApiSpec() throws Exception {
+        String port = env.getProperty("local.server.port");
+        HttpResponse<String> res = HttpClient.newHttpClient()
+                .send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v3/api-docs"))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+        assertThat(res.statusCode()).isEqualTo(200);
+        assertThat(res.body()).contains("\"openapi\"", "/api/sign-requests", "SignRequestDetail");
+
+        // bo "servers" (chua cong ngau nhien cua lan chay test) de dac ta on dinh giua cac lan xuat
+        String spec = res.body().replaceFirst("\"servers\":\\[[^\\]]*\\],?", "");
         Files.writeString(Path.of("target/openapi.json"), spec, StandardCharsets.UTF_8);
         String out = System.getProperty("ksvb.openapi.out");
         if (out != null && !out.isBlank()) {

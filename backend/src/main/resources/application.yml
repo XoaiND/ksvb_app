@@ -64,7 +64,7 @@ spring:
         jwt:
           # phải khớp claim "iss" của token = địa chỉ Keycloak trình duyệt thấy. Trong Docker đặt thêm
           # SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI trỏ Keycloak nội bộ (docker-compose.yml).
-          issuer-uri: ${KSVB_KEYCLOAK_ISSUER:http://localhost:8080/realms/dev}
+          issuer-uri: ${KSVB_OIDC_ISSUER_URI:http://localhost:8080/realms/dev}
           audiences: ksvb-api
   servlet:
     multipart:

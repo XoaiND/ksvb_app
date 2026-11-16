@@ -6,22 +6,26 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
-/** Nhật ký thao tác (ký, từ chối, huỷ, phân quyền...). */
+/** Một dòng nhật ký thao tác ghi (bảng {@code audit_log}). */
 @Entity
 @Table(name = "audit_log")
 public class AuditLog {
+
+    public static final String OK = "OK";
+    public static final String ERROR = "ERROR";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "occurred_at", nullable = false)
-    private LocalDateTime occurredAt;
+    private OffsetDateTime occurredAt;
 
-    @Column(name = "actor_id")
-    private Long actorId;
+    /** Tên đăng nhập của người thao tác ({@link AuditService#currentActor()}). */
+    @Column(length = 100)
+    private String actor;
 
     @Column(nullable = false, length = 60)
     private String action;
@@ -36,18 +40,11 @@ public class AuditLog {
     @Column(nullable = false, length = 10)
     private String result;
 
-    public static final String OK = "OK";
-    public static final String ERROR = "ERROR";
-
     protected AuditLog() {}
 
-    public AuditLog(LocalDateTime occurredAt, Long actorId, String action, String target, String detail) {
-        this(occurredAt, actorId, action, target, detail, OK);
-    }
-
-    public AuditLog(LocalDateTime occurredAt, Long actorId, String action, String target, String detail, String result) {
+    public AuditLog(OffsetDateTime occurredAt, String actor, String action, String target, String detail, String result) {
         this.occurredAt = occurredAt;
-        this.actorId = actorId;
+        this.actor = cut(actor, 100);
         this.action = cut(action, 60);
         this.target = cut(target, 120);
         this.detail = cut(detail, 500);
@@ -59,8 +56,8 @@ public class AuditLog {
     }
 
     public Long getId() { return id; }
-    public LocalDateTime getOccurredAt() { return occurredAt; }
-    public Long getActorId() { return actorId; }
+    public OffsetDateTime getOccurredAt() { return occurredAt; }
+    public String getActor() { return actor; }
     public String getAction() { return action; }
     public String getTarget() { return target; }
     public String getDetail() { return detail; }

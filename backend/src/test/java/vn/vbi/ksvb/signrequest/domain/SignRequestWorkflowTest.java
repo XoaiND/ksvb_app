@@ -98,7 +98,7 @@ class SignRequestWorkflowTest {
         assertThatThrownBy(() -> r.sign(1L, null, NOW))
                 .isInstanceOf(ConflictException.class);
         assertThatThrownBy(() -> r.sign(99L, null, NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getReason()).startsWith("NOT_"));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).startsWith("NOT_"));
     }
 
     @Test
@@ -120,7 +120,7 @@ class SignRequestWorkflowTest {
         r.submit(4L, "X", NOW);
 
         assertThatThrownBy(() -> r.cancel(1L, "lý do", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getReason()).startsWith("NOT_"));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).startsWith("NOT_"));
         assertThatThrownBy(() -> r.cancel(4L, "", NOW))
                 .isInstanceOf(BusinessException.class);
 
@@ -173,7 +173,7 @@ class SignRequestWorkflowTest {
     void chiNguoiTaoMoiTrinhKyVaSuaDuoc_vaChiKhiLaNhap() {
         SignRequest r = draft(SignMode.SEQ, a);
         assertThatThrownBy(() -> r.submit(1L, "X", NOW))
-                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getReason()).startsWith("NOT_"));
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).startsWith("NOT_"));
 
         r.submit(4L, "X", NOW);
         assertThatThrownBy(() -> r.edit(4L, "Đổi", "Hợp đồng", null, Priority.NORMAL, SignMode.SEQ, null, null,

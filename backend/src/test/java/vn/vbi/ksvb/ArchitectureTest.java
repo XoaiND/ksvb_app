@@ -7,39 +7,92 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import jakarta.persistence.Entity;
+import org.springframework.data.repository.Repository;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Luật cấu trúc theo tính năng (docs/kien-truc-chuan.md): {@code <feature>/{api,application,domain,infra}} + {@code shared/}.
- * Phụ thuộc một chiều {@code api → application → domain}, {@code infra → domain}; domain không phụ thuộc Spring.
+ * Chiều phụ thuộc theo ECOSYSTEM.md 12.1: {@code <feature>/{api,application,domain,infra}} + {@code shared/}.
+ * api → application → domain, infra → domain; domain không phụ thuộc Spring; shared không phụ thuộc tính năng.
+ * DTO request/response nằm ở application (ADR hệ sinh thái 0002, ../../docs/adr/).
  */
 @AnalyzeClasses(packages = "vn.vbi.ksvb", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
 
+    private static final String[] FEATURES = {
+        "vn.vbi.ksvb.orgunit..",
+        "vn.vbi.ksvb.position..",
+        "vn.vbi.ksvb.employee..",
+        "vn.vbi.ksvb.dashboard..",
+        "vn.vbi.ksvb.sync..",
+        "vn.vbi.ksvb.iam..",
+        "vn.vbi.ksvb.me.."
+    };
+
     @ArchTest
-    static final ArchRule domainKhongPhuThuocTangKhacVaSpring = noClasses().that().resideInAPackage("..domain..")
-            .should().dependOnClassesThat()
+    static final ArchRule domainIsPure = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
             .resideInAnyPackage("..api..", "..application..", "..infra..", "org.springframework..")
-            .because("domain chứa luật nghiệp vụ thuần, test được bằng unit test không cần Spring");
+            .because("domain chỉ chứa entity và luật nghiệp vụ, test được bằng unit test thuần");
 
     @ArchTest
-    static final ArchRule applicationKhongPhuThuocApi = noClasses().that().resideInAPackage("..application..")
-            .should().dependOnClassesThat().resideInAPackage("..api..");
+    static final ArchRule applicationDoesNotUseApi = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..api..");
 
     @ArchTest
-    static final ArchRule infraChiPhuThuocDomain = noClasses().that().resideInAPackage("..infra..")
-            .should().dependOnClassesThat().resideInAnyPackage("..api..", "..application..");
+    static final ArchRule infraDoesNotUseUpperLayers = noClasses()
+            .that()
+            .resideInAPackage("..infra..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("..api..", "..application..");
 
     @ArchTest
-    static final ArchRule apiKhongGoiThangInfra = noClasses().that().resideInAPackage("..api..")
-            .should().dependOnClassesThat().resideInAPackage("..infra..")
-            .because("controller mỏng, đi qua application");
+    static final ArchRule apiDoesNotUseInfra = noClasses()
+            .that()
+            .resideInAPackage("..api..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..infra..")
+            .because("controller mỏng: gọi service, không gọi thẳng repository");
 
     @ArchTest
-    static final ArchRule controllerNamTrongApi = classes().that().areAnnotatedWith(RestController.class)
-            .should().resideInAPackage("..api..");
+    static final ArchRule apiDoesNotExposeEntities = noClasses()
+            .that()
+            .resideInAPackage("..api..")
+            .should()
+            .dependOnClassesThat()
+            .areAnnotatedWith(Entity.class)
+            .because("không trả entity ra ngoài: controller nhận/trả DTO (record)");
 
     @ArchTest
-    static final ArchRule sharedKhongPhuThuocApiCuaTinhNang = noClasses().that().resideInAPackage("..shared..")
-            .should().dependOnClassesThat().resideInAnyPackage("..api..");
+    static final ArchRule sharedDoesNotUseFeatures = noClasses()
+            .that()
+            .resideInAPackage("vn.vbi.ksvb.shared..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(FEATURES);
+
+    @ArchTest
+    static final ArchRule controllersLiveInApi = classes()
+            .that()
+            .areAnnotatedWith(RestController.class)
+            .should()
+            .resideInAPackage("..api..");
+
+    @ArchTest
+    static final ArchRule repositoriesLiveInInfra = classes()
+            .that()
+            .areAssignableTo(Repository.class)
+            .and()
+            .areInterfaces()
+            .should()
+            .resideInAnyPackage("..infra..", "vn.vbi.ksvb.shared.outbox..", "vn.vbi.ksvb.shared.audit..");
 }

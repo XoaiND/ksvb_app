@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -39,6 +40,8 @@ import vn.vbi.ksvb.user.infra.UserRepository;
 @Service
 public class SignRequestService {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private static final Logger log = LoggerFactory.getLogger(SignRequestService.class);
 
     private final SignRequestRepository requests;
@@ -64,7 +67,7 @@ public class SignRequestService {
     public PageResponse<SignRequestSummary> search(AppUser me, String scope, String q, String docType, String unit,
                                            DocStatus status, int page, int size) {
         Scope s = parseScope(scope);
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), PageResponse.MAX_SIZE),
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
                 Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         Specification<SignRequest> spec = SignRequestSpecs.scope(s, me.getId())
                 .and(SignRequestSpecs.filter(q, docType, unit, status));
@@ -84,7 +87,7 @@ public class SignRequestService {
         SignRequest r = new SignRequest(me, in.title().trim(), in.docType().trim(), now);
         applyEdit(me, r, in, now);
         requests.save(r);
-        audit.log(me.getId(), "CREATE", "SignRequest#" + r.getId(), r.getTitle());
+        audit.log("CREATE", "SignRequest#" + r.getId(), r.getTitle());
         return toDetail(r, me);
     }
 
@@ -92,11 +95,11 @@ public class SignRequestService {
     public SignRequestDetail update(AppUser me, Long id, SaveSignRequest in) {
         SignRequest r = find(id);
         if (in.versionNo() == null || !in.versionNo().equals(r.getVersionNo())) {
-            throw new ConflictException("CONCURRENT_UPDATE", "Văn bản đã bị người khác thay đổi, vui lòng tải lại");
+            throw new ConflictException("CONCURRENT_UPDATE", "Văn bản đã bị người khác thay đổi, vui lòng tải lại", null);
         }
         applyEdit(me, r, in, LocalDateTime.now());
         requests.saveAndFlush(r); // để versionNo trả về là bản mới
-        audit.log(me.getId(), "UPDATE", "SignRequest#" + id, r.getTitle());
+        audit.log("UPDATE", "SignRequest#" + id, r.getTitle());
         return toDetail(r, me);
     }
 
@@ -104,10 +107,10 @@ public class SignRequestService {
     public void delete(AppUser me, Long id) {
         SignRequest r = find(id);
         if (!r.canDelete(me.getId())) {
-            throw new ConflictException("CANNOT_DELETE", "Chỉ người tạo mới xoá được bản nháp");
+            throw new ConflictException("CANNOT_DELETE", "Chỉ người tạo mới xoá được bản nháp", null);
         }
         requests.delete(r);
-        audit.log(me.getId(), "DELETE", "SignRequest#" + id, r.getTitle());
+        audit.log("DELETE", "SignRequest#" + id, r.getTitle());
     }
 
     private void applyEdit(AppUser me, SignRequest r, SaveSignRequest in, LocalDateTime now) {
@@ -130,7 +133,7 @@ public class SignRequestService {
         LocalDateTime now = LocalDateTime.now();
         requireCreator(me, r, "Chỉ người tạo mới được trình ký");
         r.submit(me.getId(), r.getCode() == null ? numbers.next(r.getDocType(), now.toLocalDate()) : null, now);
-        audit.log(me.getId(), "SUBMIT", codeOf(r), r.getTitle());
+        audit.log("SUBMIT", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SUBMITTED, me.getId());
         safeNotify(() -> notifier.notifyTurn(r));
         return toDetail(r, me);
@@ -141,7 +144,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         requireParticipant(me, r);
         r.sign(me.getId(), note, LocalDateTime.now());
-        audit.log(me.getId(), "SIGN", codeOf(r), r.getTitle());
+        audit.log("SIGN", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SIGNED, me.getId());
         if (r.getStatus() == DocStatus.COMPLETED) {
             event(r, SignRequestEvents.COMPLETED, me.getId());
@@ -158,7 +161,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         requireParticipant(me, r);
         r.reject(me.getId(), reason, LocalDateTime.now());
-        audit.log(me.getId(), "REJECT", codeOf(r), reason);
+        audit.log("REJECT", codeOf(r), reason);
         event(r, SignRequestEvents.REJECTED, me.getId());
         safeNotify(() -> notifier.notifyStatusChanged(r));
         return toDetail(r, me);
@@ -169,7 +172,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         requireCreator(me, r, "Chỉ người tạo mới được huỷ văn bản");
         r.cancel(me.getId(), reason, LocalDateTime.now());
-        audit.log(me.getId(), "CANCEL", codeOf(r), reason);
+        audit.log("CANCEL", codeOf(r), reason);
         event(r, SignRequestEvents.CANCELLED, me.getId());
         safeNotify(() -> notifier.notifyStatusChanged(r));
         return toDetail(r, me);
@@ -180,7 +183,7 @@ public class SignRequestService {
         SignRequest r = find(id);
         requireCreator(me, r, "Chỉ người tạo mới được thu hồi văn bản");
         r.recall(me.getId(), LocalDateTime.now());
-        audit.log(me.getId(), "RECALL", codeOf(r), r.getTitle());
+        audit.log("RECALL", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.RECALLED, me.getId());
         return toDetail(r, me);
     }
@@ -192,10 +195,10 @@ public class SignRequestService {
             throw new AccessDeniedException("Chỉ người tạo mới được nhắc ký");
         }
         if (r.getStatus() != DocStatus.PENDING) {
-            throw new ConflictException("NOT_PENDING", "Chỉ nhắc ký được văn bản đang chờ ký");
+            throw new ConflictException("NOT_PENDING", "Chỉ nhắc ký được văn bản đang chờ ký", null);
         }
         safeNotify(() -> notifier.remind(r));
-        audit.log(me.getId(), "REMIND", codeOf(r), null);
+        audit.log("REMIND", codeOf(r), null);
     }
 
     /** Chạy hằng ngày: chuyển các văn bản quá hạn sang EXPIRED. Trả về số văn bản đã chuyển. */
@@ -207,7 +210,7 @@ public class SignRequestService {
         for (SignRequest r : requests.findByStatusAndDeadlineBefore(DocStatus.PENDING, today)) {
             if (r.expireIfOverdue(today, now)) {
                 n++;
-                audit.log(null, "EXPIRE", codeOf(r), r.getTitle());
+                audit.log("EXPIRE", codeOf(r), r.getTitle());
                 event(r, SignRequestEvents.EXPIRED, null);
                 safeNotify(() -> notifier.notifyStatusChanged(r));
             }
@@ -264,7 +267,8 @@ public class SignRequestService {
         p.put("status", r.getStatus().name());
         p.put("creatorId", r.getCreator().getId());
         p.put("actorId", actorId);
-        outbox.publish(SignRequestEvents.AGGREGATE, r.getId(), r.getCode(), type, p);
+        // khoá của KSVB là bigint: aggregate_id uuid = (0, id), số hiệu đọc được ở aggregate_code
+        outbox.publish(SignRequestEvents.AGGREGATE, new UUID(0L, r.getId()), r.getCode(), type, r.getVersionNo(), p, null);
     }
 
     private static String codeOf(SignRequest r) {
