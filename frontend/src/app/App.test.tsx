@@ -3,14 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetDemoData } from '../design/demoBackend';
-import { fail, installFetch as installBase } from '../test/fakeFetch';
+import { fail, installFetch as installBase, type Call, type Route } from '../test/fakeFetch';
 import type { Me, Person, SignRequestDetail, SignRequestSummary } from '../shared/api/types';
 import App from './App';
 import AppProviders from './AppProviders';
 
-type Call = Parameters<NonNullable<Parameters<typeof installBase>[0]>[string]>[0];
-type Reply = ReturnType<NonNullable<Parameters<typeof installBase>[0]>[string]>;
-type Route = (call: Call) => unknown;
+type Reply = ReturnType<Route>;
+type PlainRoute = (call: Call) => unknown;
 
 const isReply = (r: unknown): r is Reply =>
   !!r &&
@@ -18,23 +17,16 @@ const isReply = (r: unknown): r is Reply =>
   typeof (r as Reply).status === 'number' &&
   Object.keys(r).every((k) => k === 'status' || k === 'body');
 
-/** Route trả dữ liệu thẳng (200), `{ status }` hoặc `fail(...)`; khoá có tham số `:id` khớp một đoạn đường dẫn. */
-function installFetch(routes: Record<string, Route> = {}) {
-  const keys = Object.keys(routes);
-  const wrapped = new Proxy({} as Record<string, (c: Call) => Reply>, {
-    get(_, key: string) {
-      const k =
-        key in routes
-          ? key
-          : keys.find((p) => p.includes(':') && new RegExp('^' + p.replace(/:[^/]+/g, '[^/]+') + '$').test(key));
-      if (!k) return undefined;
-      return (c: Call): Reply => {
-        const r = routes[k](c);
-        if (r === undefined) return { status: 204 };
-        return isReply(r) ? r : { status: 200, body: r };
-      };
-    },
-  });
+/** Route trả dữ liệu thẳng (200), `{ status }` hoặc `fail(...)`; bọc lại thành Route của fakeFetch chuẩn. */
+function installFetch(routes: Record<string, PlainRoute> = {}) {
+  const wrapped: Record<string, Route> = {};
+  for (const [k, h] of Object.entries(routes)) {
+    wrapped[k] = (c) => {
+      const r = h(c);
+      if (r === undefined) return { status: 204 };
+      return isReply(r) ? r : { status: 200, body: r };
+    };
+  }
   return installBase(wrapped);
 }
 
@@ -130,7 +122,7 @@ const detail = (id: number, title: string, extra: Partial<SignRequestDetail> = {
 });
 
 /** Các route dùng chung cho hầu hết trang. */
-const baseRoutes = (me: Me = ME): Record<string, Route> => ({
+const baseRoutes = (me: Me = ME): Record<string, PlainRoute> => ({
   'GET /me': () => me,
   'GET /users': () => PEOPLE,
   'GET /templates': () => [],
@@ -227,6 +219,14 @@ describe('Dashboard và menu', () => {
   });
 });
 
+describe('Đường dẫn lạ', () => {
+  it('hiện trang Không tìm thấy', async () => {
+    installFetch(baseRoutes());
+    renderAt('/khong-co-trang-nay');
+    expect(await screen.findByText('Không tìm thấy trang')).toBeInTheDocument();
+  });
+});
+
 describe('Danh sách tài liệu', () => {
   it('đổi tab thì gọi API với scope tương ứng', async () => {
     const { calls } = installFetch(baseRoutes());
@@ -269,12 +269,11 @@ describe('Danh sách tài liệu', () => {
 });
 
 describe('Ký và từ chối', () => {
-  const signRoutes = (calls?: Call[]) => ({
+  const signRoutes = () => ({
     ...baseRoutes(),
     'GET /sign-requests/:id': () => detail(5, 'Tờ trình ngân sách quý IV'),
     'POST /sign-requests/:id/sign': () => detail(5, 'Tờ trình ngân sách quý IV', { canSign: false }),
     'POST /sign-requests/:id/reject': () => detail(5, 'Tờ trình ngân sách quý IV', { status: 'REJECTED', canSign: false }),
-    ...(calls ? {} : {}),
   });
 
   it('ký: cần xác nhận đã đọc, rồi gọi API ký kèm ghi chú', async () => {
@@ -408,11 +407,10 @@ describe('Soạn tài liệu', () => {
     await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ versionNo: 3 }));
   });
 
-  it('không có quyền document.create thì chuyển về trang mặc định', async () => {
+  it('không có quyền document.create thì hiện trang Không có quyền', async () => {
     installFetch({ ...baseRoutes({ ...ME, permissions: ['document.sign'] }), 'GET /dashboard': () => dashboard });
     renderAt('/compose');
-    expect(await screen.findByText('Việc cần xử lý ngay')).toBeInTheDocument();
-    expect(screen.queryByText('Soạn tài liệu mới')).not.toBeInTheDocument();
+    expect(await screen.findByText('Không có quyền truy cập')).toBeInTheDocument();
   });
 });
 
@@ -450,6 +448,6 @@ describe('Báo cáo và quản trị', () => {
   it('không có quyền quản trị thì báo không truy cập được', async () => {
     installFetch(baseRoutes());
     renderAt('/admin');
-    expect(await screen.findByText('Bạn không có quyền truy cập trang Quản trị.')).toBeInTheDocument();
+    expect(await screen.findByText('Không có quyền truy cập')).toBeInTheDocument();
   });
 });

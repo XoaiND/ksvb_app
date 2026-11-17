@@ -1,8 +1,8 @@
-import { Button, Drawer, Layout, Menu, theme, type MenuProps } from 'antd';
+import { Badge, Button, Drawer, Layout, Menu, theme, type MenuProps } from 'antd';
 import { useLocation, useNavigate } from 'react-router';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 
-import { BRAND } from '../nav';
+import { BRAND, useNavBadges } from '../nav';
 import { useNav } from './useNav';
 
 const { Sider } = Layout;
@@ -24,16 +24,37 @@ export default function SideMenu({ collapsed, mobile, drawerOpen: drawer, onClos
     if (!open) onCloseDrawer();
   };
   const { navItems, leaves } = useNav();
-  const selected =
-    leaves.filter((l) => loc.pathname.startsWith(l.key)).sort((a, b) => b.key.length - a.key.length)[0]?.key ??
-    leaves[0]?.key ??
-    '/profile';
+  const badges = useNavBadges();
+  const current = new URLSearchParams(loc.search);
+  // chọn mục: khớp đúng path + query trước, sau đó path dài nhất mà mọi tham số query của mục đều có trong URL
+  const selected = (() => {
+    let best: { key: string; score: number } | undefined;
+    for (const l of leaves) {
+      const [path, qs = ''] = l.key.split('?');
+      if (!loc.pathname.startsWith(path)) continue;
+      const want = new URLSearchParams(qs);
+      if ([...want].some(([k, v]) => current.get(k) !== v)) continue;
+      const score = path.length * 1000 + [...want].length;
+      if (!best || score > best.score) best = { key: l.key, score };
+    }
+    return best?.key ?? leaves[0]?.key ?? '';
+  })();
 
+  const label = (key: string, text: string) => {
+    const n = badges[key];
+    return n ? (
+      <Badge count={n} size="small" offset={[10, 0]}>
+        {text}
+      </Badge>
+    ) : (
+      text
+    );
+  };
   const menuItems: MenuProps['items'] = navItems.map((i) => ({
     key: i.key,
     icon: i.icon,
-    label: i.label,
-    children: i.children?.map((c) => ({ key: c.key, icon: c.icon, label: c.label })),
+    label: i.children ? i.label : label(i.key, i.label),
+    children: i.children?.map((c) => ({ key: c.key, icon: c.icon, label: label(c.key, c.label) })),
   }));
 
   const menu = (inDrawer: boolean) => (

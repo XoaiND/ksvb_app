@@ -1,45 +1,43 @@
+import { lazy, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react';
 import { Navigate } from 'react-router';
-import type { ReactNode } from 'react';
-import AdminPage from '../features/admin/pages/AdminPage';
-import ComposePage from '../features/compose/pages/ComposePage';
-import DashboardPage from '../features/dashboard/pages/DashboardPage';
-import DocumentDetailPage from '../features/documents/pages/DocumentDetailPage';
-import DocumentsPage from '../features/documents/pages/DocumentsPage';
-import WatchingPage from '../features/documents/pages/WatchingPage';
-import MePage from '../features/me/pages/MePage';
-import ReportsPage from '../features/reports/pages/ReportsPage';
-import TemplatesPage from '../features/templates/pages/TemplatesPage';
-import type { Permission } from '../shared/api/types';
-import { useNav } from './layout/useNav';
+import { ADMIN_PERMISSIONS } from '../shared/auth/permissions';
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'));
+const ComposePage = lazy(() => import('../features/compose/pages/ComposePage'));
+const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
+const DocumentDetailPage = lazy(() => import('../features/documents/pages/DocumentDetailPage'));
+const DocumentSignPage = lazy(() => import('../features/documents/pages/DocumentSignPage'));
+const DocumentsPage = lazy(() => import('../features/documents/pages/DocumentsPage'));
+const WatchingPage = lazy(() => import('../features/documents/pages/WatchingPage'));
+const MePage = lazy(() => import('../features/me/pages/MePage'));
+const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'));
+const TemplatesPage = lazy(() => import('../features/templates/pages/TemplatesPage'));
 
 /**
  * RIÊNG của app: danh sách route và quyền cần có (App.tsx chỉ đọc `ROUTES`). Thiếu `perm` = chỉ cần đăng nhập;
- * thiếu quyền thì chuyển về trang mặc định.
+ * `perm` là một quyền hoặc mảng quyền (có một quyền là đủ); thiếu quyền thì hiện trang "Không có quyền".
+ * Trang tải lười bằng `component` (React.lazy, App.tsx bọc Suspense); chuyển hướng dùng `element`.
  */
 export interface RouteDef {
   path?: string;
   index?: boolean;
-  perm?: Permission;
-  element: ReactNode;
+  perm?: string | string[];
+  element?: ReactNode;
+  component?: LazyExoticComponent<ComponentType>;
   children?: RouteDef[];
 }
 
-/** Chuyển về trang mặc định theo quyền. */
-function Home() {
-  return <Navigate to={useNav().home} replace />;
-}
-
 export const ROUTES: RouteDef[] = [
-  { path: '/dashboard', element: <DashboardPage /> },
-  { path: '/documents', element: <DocumentsPage /> },
-  { path: '/documents/:id', element: <DocumentDetailPage /> },
-  { path: '/documents/:id/sign', element: <DocumentDetailPage signMode /> },
-  { path: '/compose', perm: 'document.create', element: <ComposePage /> },
-  { path: '/watching', element: <WatchingPage /> },
-  { path: '/templates', perm: 'document.create', element: <TemplatesPage /> },
-  { path: '/reports', perm: 'report.view', element: <ReportsPage /> },
-  // Quản trị mở bằng bất kỳ một trong nhiều quyền: AdminPage tự báo khi thiếu quyền (RouteDef.perm chỉ nhận một quyền)
-  { path: '/admin', element: <AdminPage /> },
-  { path: '/profile', element: <MePage /> },
-  { path: '*', element: <Home /> },
+  { path: '/', element: <Navigate to="/dashboard" replace /> },
+  { path: '/dashboard', component: DashboardPage },
+  { path: '/documents', component: DocumentsPage },
+  { path: '/documents/:id', component: DocumentDetailPage },
+  { path: '/documents/:id/sign', component: DocumentSignPage },
+  { path: '/compose', perm: 'document.create', component: ComposePage },
+  { path: '/watching', component: WatchingPage },
+  { path: '/templates', perm: 'document.create', component: TemplatesPage },
+  { path: '/reports', perm: 'report.view', component: ReportsPage },
+  { path: '/admin', perm: ADMIN_PERMISSIONS, component: AdminPage },
+  { path: '/profile', component: MePage },
+  { path: '*', component: NotFoundPage },
 ];

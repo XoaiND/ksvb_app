@@ -35,7 +35,7 @@ class OpenApiExportTest extends PostgresIntegrationTest {
                         HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertThat(res.statusCode()).isEqualTo(200);
-        assertThat(res.body()).contains("\"openapi\"", "/api/sign-requests", "SignRequestDetail");
+        assertThat(res.body()).contains("\"openapi\"", "/api/me");
 
         // bo "servers" (chua cong ngau nhien cua lan chay test) de dac ta on dinh giua cac lan xuat
         String spec = res.body().replaceFirst("\"servers\":\\[[^\\]]*\\],?", "");

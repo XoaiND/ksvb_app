@@ -70,10 +70,10 @@ test('từ chối ký bắt buộc nhập lý do', async ({ page }) => {
   await expect(page.getByText('Đã từ chối ký')).toBeVisible();
 });
 
-test('Thiếu quyền: về trang mặc định, menu ẩn mục không được phép', async ({ page }) => {
+test('Thiếu quyền: hiện trang Không có quyền, menu ẩn mục không được phép', async ({ page }) => {
   await mockApi(page, {}, ['document.create', 'document.sign']);
   await page.goto('/reports');
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Không có quyền truy cập')).toBeVisible();
   const nav = page.getByRole('menu');
   await expect(nav.getByText('Báo cáo')).toHaveCount(0);
   await expect(nav.getByText('Soạn tài liệu mới')).toBeVisible();

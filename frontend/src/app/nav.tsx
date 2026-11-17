@@ -110,3 +110,9 @@ export function TopbarEnd() {
     </Dropdown>
   );
 }
+
+/** Huy hiệu số cạnh mục menu: khoá = `key` của mục (đường dẫn), giá trị > 0 thì hiện. KSVB chưa có (chuông trên thanh trên đã báo). */
+export function useNavBadges(): Record<string, number> {
+  return NO_BADGES;
+}
+const NO_BADGES: Record<string, number> = {};
