@@ -1,0 +1,66 @@
+package ksvb.signrequest.infra;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
+import java.util.List;
+import ksvb.signrequest.domain.DocStatus;
+import ksvb.signrequest.domain.Participant;
+import ksvb.signrequest.domain.SignRequest;
+import ksvb.signrequest.domain.SignerStatus;
+import org.springframework.data.jpa.domain.Specification;
+
+/** Các điều kiện lọc danh sách văn bản (Specification). */
+public final class SignRequestSpecs {
+
+    private SignRequestSpecs() {}
+
+    public enum Scope {
+        /** Chờ tôi ký. */
+        PENDING,
+        /** Do tôi tạo. */
+        MINE,
+        /** Tài liệu chung. */
+        SHARED,
+        /** Tôi theo dõi. */
+        WATCHING
+    }
+
+    public static Specification<SignRequest> scope(Scope scope, Long me) {
+        return (root, query, cb) -> switch (scope) {
+            case PENDING -> {
+                query.distinct(true);
+                Join<SignRequest, Participant> p = root.join("participants");
+                yield cb.and(
+                        cb.equal(root.get("status"), DocStatus.PENDING),
+                        cb.equal(p.get("user").get("id"), me),
+                        cb.equal(p.get("status"), SignerStatus.PENDING));
+            }
+            case MINE -> cb.equal(root.get("creator").get("id"), me);
+            case SHARED -> cb.isTrue(root.<Boolean>get("shared"));
+            case WATCHING -> cb.isMember(me, root.<java.util.Set<Long>>get("watcherIds"));
+        };
+    }
+
+    public static Specification<SignRequest> filter(String q, String docType, String unit, DocStatus status) {
+        return (root, query, cb) -> {
+            List<Predicate> ps = new ArrayList<>();
+            if (q != null && !q.isBlank()) {
+                String like = "%" + q.trim().toLowerCase() + "%";
+                ps.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), like),
+                        cb.like(cb.lower(cb.coalesce(root.<String>get("code"), "")), like)));
+            }
+            if (docType != null && !docType.isBlank()) {
+                ps.add(cb.equal(root.get("docType"), docType));
+            }
+            if (unit != null && !unit.isBlank()) {
+                ps.add(cb.equal(root.get("unitName"), unit));
+            }
+            if (status != null) {
+                ps.add(cb.equal(root.get("status"), status));
+            }
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
+    }
+}

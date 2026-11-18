@@ -11,7 +11,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>vn.vbi</groupId>
+  <groupId>ksvb</groupId>
   <artifactId>ksvb-backend</artifactId>
   <version>0.1.0</version>
   <name>ksvb-backend</name>

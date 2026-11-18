@@ -1,0 +1,29 @@
+package ksvb.signrequest.infra;
+
+import ksvb.signrequest.domain.NotificationService;
+import ksvb.signrequest.domain.SignRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+/** Bản mặc định: chỉ ghi log. Thay bằng bản gửi email khi có máy chủ SMTP. */
+@Service
+public class LoggingNotificationService implements NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(LoggingNotificationService.class);
+
+    @Override
+    public void notifyTurn(SignRequest r) {
+        log.info("[thông báo] Văn bản {} đang chờ ký", r.getCode());
+    }
+
+    @Override
+    public void notifyStatusChanged(SignRequest r) {
+        log.info("[thông báo] Văn bản {} chuyển sang {}", r.getCode(), r.getStatus());
+    }
+
+    @Override
+    public void remind(SignRequest r) {
+        log.info("[thông báo] Nhắc ký văn bản {}", r.getCode());
+    }
+}

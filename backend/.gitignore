@@ -1,5 +1,5 @@
 target/
 .idea/
 *.iml
-# cấu hình chạy cục bộ ở gốc backend (không phải gói nguồn vn/vbi/ksvb/config)
+# cấu hình chạy cục bộ ở gốc backend (không phải gói nguồn ksvb/config)
 /config/

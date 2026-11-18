@@ -12,7 +12,7 @@ giữ bản chụp ở bảng `app_user` (tạo ở lần đăng nhập đầu, 
 ## 2. Thông số
 | Mục | Giá trị |
 |---|---|
-| Gói gốc | `vn.vbi.ksvb` |
+| Gói gốc | `ksvb` |
 | Cổng | backend 8082, frontend dev 5174, docker 3001 → 8080 |
 | Database | `ksvb`, schema `ksvb`, role `ksvb_app` |
 | Keycloak | realm `dev`, client `ksvb-web` (public, PKCE), `ksvb-api` (client role = quyền) |
