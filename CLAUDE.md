@@ -26,7 +26,7 @@
 - Bí mật ngoài repo: `backend/.env` (backend tự đọc), `.env` cạnh `docker-compose.yml`; mẫu `*.env.example`. Mọi biến có tiền tố `KSVB_`, không đọc tên cũ; không dùng `DB_*` của máy dev (của dịch vụ khác).
 - Flyway: `backend/src/main/resources/db/migration` (`V1` schema ban đầu, `V2` `audit_log.result` + `ksvb_outbox`, `V3` cột `Auditable` + trigger `trg_touch_row`); `ddl-auto=validate`. Đổi schema = thêm `V<n>__...sql`, KHÔNG sửa file đã áp dụng (kể cả chú thích). Chỉ PostgreSQL.
 - Docker: backend uid 10001; frontend `nginx-unprivileged` nghe 8080 (`/healthz`), compose `3001:8080`. Profile `prod`: log JSON ECS, Swagger tắt. Prometheus `/actuator/prometheus` (quyền `system.monitor`).
-- Token `iss` là địa chỉ trình duyệt thấy (`KSVB_OIDC_ISSUER_URI`); trong Docker khoá công khai lấy qua `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` (đừng khai báo rỗng trong yml). Cổng dev: Keycloak 8080, HRM 8081/5173/3000, KSVB 8082/5174/3001.
+- Token `iss` là địa chỉ trình duyệt thấy (`KSVB_OIDC_ISSUER_URI`); khoá công khai lấy qua `KSVB_OIDC_JWK_SET_URI` (mặc định Keycloak `localhost:8080`; Docker ghi đè `http://keycloak:8080/...` trong compose; mặc định issuer là `https://sso.xoaind.io.vn/realms/dev`). Cổng dev: Keycloak 8080, HRM 8081/5173/3000, KSVB 8082/5174/3001.
 - Tệp tải lên: `KSVB_STORAGE_PATH` (Docker mount `./data` vào `/app/data`, tệp ở `data/upload` tự tạo khi ghi lần đầu). Lịch sử git có mật khẩu DB cũ ghi cứng (commit `794beca`): nên đổi mật khẩu đó.
 
 ## Quyền
