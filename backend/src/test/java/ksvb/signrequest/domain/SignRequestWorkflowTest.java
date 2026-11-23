@@ -90,6 +90,56 @@ class SignRequestWorkflowTest {
     }
 
     @Test
+    void tuanTuTheoBuoc_nguoiCungBuocKyCungLuc_buocSauMoKhiBuocTruocKyHet() {
+        AppUser d = user(5L);
+        AppUser e = user(6L);
+        SignRequest r = new SignRequest(creator, "Theo bước", "Hợp đồng", NOW);
+        r.edit(4L, "Theo bước", "Hợp đồng", null, Priority.NORMAL, SignMode.SEQ, null, null, false, NOW);
+        r.replaceSigners(List.of(a, b, c, d, e), List.of(1, 1, 2, 2, 3));
+        r.addAttachment("hd.pdf", "x.pdf", 10, true, NOW);
+        r.submit(4L, "X", NOW);
+
+        assertThat(r.getParticipants()).extracting(Participant::getStepNo).containsExactly(1, 1, 2, 2, 3);
+        assertThat(r.getParticipants()).extracting(Participant::getOrderNo).containsExactly(1, 2, 3, 4, 5);
+        assertThat(r.isPendingFor(1L)).isTrue();
+        assertThat(r.isPendingFor(2L)).isTrue();
+        assertThat(r.isPendingFor(3L)).isFalse();
+
+        r.sign(2L, null, NOW);
+        assertThat(r.isPendingFor(3L)).isFalse(); // còn người 1 ở bước 1
+        r.sign(1L, null, NOW);
+        assertThat(r.isPendingFor(3L)).isTrue();
+        assertThat(r.isPendingFor(5L)).isTrue();
+        assertThat(r.isPendingFor(6L)).isFalse();
+
+        r.sign(3L, null, NOW);
+        r.sign(5L, null, NOW);
+        assertThat(r.isPendingFor(6L)).isTrue();
+        r.sign(6L, null, NOW);
+        assertThat(r.getStatus()).isEqualTo(DocStatus.COMPLETED);
+    }
+
+    @Test
+    void buocKy_khongHopLe_bi422_vaCungMotBuocThiThanhSongSong() {
+        SignRequest r = new SignRequest(creator, "Theo bước", "Hợp đồng", NOW);
+        r.edit(4L, "Theo bước", "Hợp đồng", null, Priority.NORMAL, SignMode.SEQ, null, null, false, NOW);
+        for (List<Integer> bad : List.of(List.of(2, 2), List.of(1, 3), List.of(1, 2, 1), List.of(1))) {
+            assertThatThrownBy(() -> r.replaceSigners(List.of(a, b, c).subList(0, Math.max(2, bad.size())), bad))
+                    .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getCode()).isEqualTo("INVALID_STEPS"));
+        }
+        r.replaceSigners(List.of(a, b, c), List.of(1, 1, 1));
+        assertThat(r.getMode()).isEqualTo(SignMode.PAR);
+        assertThat(r.getParticipants()).extracting(Participant::getStepNo).containsOnly(1);
+
+        // song song bỏ qua bước truyền vào; tuần tự không truyền bước = mỗi người một bước
+        r.replaceSigners(List.of(a, b), List.of(1, 2));
+        assertThat(r.getParticipants()).extracting(Participant::getStepNo).containsExactly(1, 1);
+        r.edit(4L, "Theo bước", "Hợp đồng", null, Priority.NORMAL, SignMode.SEQ, null, null, false, NOW);
+        r.replaceSigners(List.of(a, b, c));
+        assertThat(r.getParticipants()).extracting(Participant::getStepNo).containsExactly(1, 2, 3);
+    }
+
+    @Test
     void khongKyHaiLan_vaNguoiNgoaiLuongBiTuChoiQuyen() {
         SignRequest r = draft(SignMode.PAR, a, b);
         r.submit(4L, "X", NOW);

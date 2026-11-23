@@ -7,12 +7,18 @@ import type { components } from './schema';
 type S = components['schemas'];
 
 export type Me = S['MeDto'];
+export type Signature = S['SignatureDto'];
 
 /** Mã quyền (client role của ksvb-api), vd. `document.create`. */
 export type Permission = string;
 export type Person = S['PersonDto'];
 export type Participant = S['ParticipantDto'];
 export type Attachment = S['AttachmentDto'];
+/** Ô ký trên PDF: toạ độ trang hiển thị, point, gốc trên-trái, trang từ 1. */
+export type SignSlot = S['SlotDto'];
+export type SlotLayout = S['SlotLayoutDto'];
+export type PageImage = S['PageImageDto'];
+export type SignerSignature = S['SignerSignatureDto'];
 export type SignRequestSummary = S['SignRequestSummary'];
 export type SignRequestDetail = S['SignRequestDetail'];
 export type SaveSignRequestInput = S['SaveSignRequest'];

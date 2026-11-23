@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sign-requests/{id}/attachments/{attachmentId}/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["slots"];
+        put: operations["saveSlots"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/templates": {
         parameters: {
             query?: never;
@@ -180,6 +196,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["signature"];
+        put?: never;
+        post: operations["saveSignature"];
+        delete: operations["deleteSignature"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/signature/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["previewSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}": {
         parameters: {
             query?: never;
@@ -212,6 +260,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sign-requests/{id}/signer-signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["signerSignatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sign-requests/{id}/attachments/{attachmentId}": {
         parameters: {
             query?: never;
@@ -223,6 +287,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["removeAttachment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sign-requests/{id}/attachments/{attachmentId}/pages/{page}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["page"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -341,6 +421,7 @@ export interface components {
             message?: string | null;
             shared?: boolean | null;
             signerIds?: number[];
+            signerSteps?: number[] | null;
             watcherIds?: number[] | null;
             /** Format: int32 */
             versionNo?: number | null;
@@ -354,6 +435,12 @@ export interface components {
             signable: boolean;
             /** Format: date-time */
             uploadedAt: string;
+            signed: boolean;
+            /** Format: int64 */
+            signedSizeBytes?: number | null;
+            signedSha256?: string | null;
+            /** Format: date-time */
+            signedAt?: string | null;
         };
         ParticipantDto: {
             /** Format: int64 */
@@ -363,6 +450,8 @@ export interface components {
             unitName?: string | null;
             /** Format: int32 */
             orderNo: number;
+            /** Format: int32 */
+            stepNo: number;
             /** @enum {string} */
             status: "WAITING" | "PENDING" | "SIGNED" | "REJECTED";
             /** Format: date-time */
@@ -379,6 +468,7 @@ export interface components {
             /** @enum {string|null} */
             role?: "USER" | "ADMIN" | null;
             active: boolean;
+            hasSignature: boolean;
         };
         SignRequestDetail: {
             /** Format: int64 */
@@ -415,6 +505,33 @@ export interface components {
             /** Format: int32 */
             versionNo: number;
         };
+        SaveSlots: {
+            slots?: components["schemas"]["SlotDto"][];
+        };
+        SlotDto: {
+            /** Format: int32 */
+            orderNo: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+            /** Format: double */
+            width: number;
+            /** Format: double */
+            height: number;
+        };
+        PageSizeDto: {
+            /** Format: double */
+            width: number;
+            /** Format: double */
+            height: number;
+        };
+        SlotLayoutDto: {
+            pages: components["schemas"]["PageSizeDto"][];
+            slots: components["schemas"]["SlotDto"][];
+        };
         SaveTemplate: {
             name?: string;
             /** @enum {string} */
@@ -433,6 +550,12 @@ export interface components {
         };
         ActionRequest: {
             note?: string | null;
+            showCaption?: boolean | null;
+        };
+        SignatureDto: {
+            imageDataUrl: string;
+            /** Format: date-time */
+            updatedAt?: string | null;
         };
         UpdateUser: {
             active?: boolean | null;
@@ -473,6 +596,14 @@ export interface components {
             signerCount: number;
             canSign: boolean;
         };
+        SignerSignatureDto: {
+            /** Format: int64 */
+            userId: number;
+            imageDataUrl?: string | null;
+        };
+        PageImageDto: {
+            imageDataUrl: string;
+        };
         ReportDto: {
             /** Format: int64 */
             total: number;
@@ -505,6 +636,9 @@ export interface components {
             unitName?: string | null;
             jobTitle?: string | null;
             permissions: string[];
+            hasSignature: boolean;
+            /** Format: date-time */
+            signatureUpdatedAt?: string | null;
         };
         DashboardDto: {
             /** Format: int64 */
@@ -622,6 +756,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    slots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                attachmentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SlotLayoutDto"];
+                };
+            };
+        };
+    };
+    saveSlots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                attachmentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSlots"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SlotLayoutDto"];
+                };
             };
         };
     };
@@ -916,6 +1100,98 @@ export interface operations {
             };
         };
     };
+    signature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SignatureDto"];
+                };
+            };
+        };
+    };
+    saveSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SignatureDto"];
+                };
+            };
+        };
+    };
+    deleteSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    previewSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SignatureDto"];
+                };
+            };
+        };
+    };
     updateUser: {
         parameters: {
             query?: never;
@@ -962,9 +1238,33 @@ export interface operations {
             };
         };
     };
-    download: {
+    signerSignatures: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SignerSignatureDto"][];
+                };
+            };
+        };
+    };
+    download: {
+        parameters: {
+            query?: {
+                signed?: boolean;
+            };
             header?: never;
             path: {
                 id: number;
@@ -1003,6 +1303,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    page: {
+        parameters: {
+            query?: {
+                original?: boolean;
+            };
+            header?: never;
+            path: {
+                id: number;
+                attachmentId: number;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageImageDto"];
+                };
             };
         };
     };

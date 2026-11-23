@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useApiQuery } from '../../shared/api/query';
 import type { ListParams } from '../../shared/api/types';
 import { dashboardKeys } from '../dashboard/hooks';
@@ -40,3 +40,22 @@ export function useRefreshDocuments() {
     void qc.invalidateQueries({ queryKey: dashboardKeys.all });
   };
 }
+
+/** Ảnh chữ ký của từng người ký: userId → data URL (null = chưa có ảnh). */
+export function useSignerSignatures(id: number, enabled = true) {
+  const q = useApiQuery([...documentKeys.all, id, 'signer-signatures'], () => documentsApi.signerSignatures(id), {
+    enabled: enabled && id > 0,
+    silent: true,
+    keepPrevious: false,
+  });
+  return q.data ? Object.fromEntries(q.data.map((s) => [s.userId, s.imageDataUrl ?? null])) : undefined;
+}
+
+/** Kích thước trang + ô ký còn lại (chưa đóng chữ ký) của các tệp cần ký, đọc từ PDF trên máy chủ. */
+export const useSlotLayouts = (id: number, attachmentIds: number[]) =>
+  useQueries({
+    queries: attachmentIds.map((aid) => ({
+      queryKey: [...documentKeys.all, id, 'attachments', aid, 'slots'],
+      queryFn: () => documentsApi.slots(id, aid),
+    })),
+  });

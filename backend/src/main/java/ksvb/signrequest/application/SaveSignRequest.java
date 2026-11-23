@@ -20,6 +20,8 @@ public record SaveSignRequest(
         @Size(max = 500, message = "Lời nhắn tối đa 500 ký tự") @Nullable String message,
         @Nullable Boolean shared,
         @NotEmpty(message = "Cần ít nhất một người ký") List<Long> signerIds,
+        /** Bước ký của từng người (cùng thứ tự signerIds; người cùng bước ký cùng lúc). Bỏ trống: tuần tự = mỗi người một bước. */
+        @Nullable List<Integer> signerSteps,
         @Nullable List<Long> watcherIds,
         /** Bắt buộc khi sửa (PUT): versionNo của bản đang sửa; lệch với DB → 409 CONCURRENT_UPDATE. */
         @Nullable Integer versionNo) {}

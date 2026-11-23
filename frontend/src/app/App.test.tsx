@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,6 +40,7 @@ const person = (id: number, name: string, extra: Partial<Person> = {}): Person =
   unitName: 'Phòng Kinh doanh',
   jobTitle: 'Chuyên viên',
   active: true,
+  hasSignature: true,
   ...extra,
 });
 
@@ -51,6 +52,7 @@ const ME: Me = {
   unitName: 'Phòng Kinh doanh',
   jobTitle: 'Chuyên viên',
   permissions: ['document.create', 'document.sign'],
+  hasSignature: true,
 };
 
 const PEOPLE: Person[] = [
@@ -99,6 +101,7 @@ const detail = (id: number, title: string, extra: Partial<SignRequestDetail> = {
       jobTitle: 'Chuyên viên',
       unitName: 'Phòng Kinh doanh',
       orderNo: 1,
+      stepNo: 1,
       status: 'PENDING',
     },
     {
@@ -107,11 +110,14 @@ const detail = (id: number, title: string, extra: Partial<SignRequestDetail> = {
       jobTitle: 'Tổng giám đốc',
       unitName: 'Ban Tổng giám đốc',
       orderNo: 2,
+      stepNo: 2,
       status: 'WAITING',
     },
   ],
   watchers: [],
-  attachments: [{ id: 9, name: 'hop-dong.pdf', sizeBytes: 2048, signable: true, uploadedAt: '2026-10-30T09:00:00' }],
+  attachments: [
+    { id: 9, name: 'hop-dong.pdf', sizeBytes: 2048, signable: true, uploadedAt: '2026-10-30T09:00:00', signed: false },
+  ],
   canSign: true,
   canCancel: false,
   canRecall: false,
@@ -287,9 +293,71 @@ describe('Ký và từ chối', () => {
     await userEvent.click(screen.getByLabelText(/Tôi đã đọc/));
     await userEvent.click(screen.getByRole('button', { name: /Xác nhận ký/ }));
     await waitFor(() =>
-      expect(calls.find((c) => c.method === 'POST' && c.path === '/sign-requests/5/sign')?.body).toEqual({ note: 'đồng ý' }),
+      expect(calls.find((c) => c.method === 'POST' && c.path === '/sign-requests/5/sign')?.body).toEqual({
+        note: 'đồng ý',
+        showCaption: true,
+      }),
     );
-    expect(await screen.findByText('Đã ký văn bản thành công')).toBeInTheDocument();
+    expect(await screen.findByText('Đã ký. Chữ ký đã được đóng vào PDF.')).toBeInTheDocument();
+  });
+
+  it('ký: bỏ ghi họ tên/thời gian thì gửi showCaption=false', async () => {
+    const { calls } = installFetch(signRoutes());
+    renderAt('/documents/5/sign');
+    await screen.findByText(/Ký: Tờ trình/);
+    await userEvent.click(await screen.findByLabelText(/Ghi họ tên và thời gian/));
+    await userEvent.click(screen.getByRole('button', { name: /Ký văn bản/ }));
+    await userEvent.click(screen.getByLabelText(/Tôi đã đọc/));
+    await userEvent.click(screen.getByRole('button', { name: /Xác nhận ký/ }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'POST' && c.path === '/sign-requests/5/sign')?.body).toMatchObject({
+        showCaption: false,
+      }),
+    );
+  });
+
+  it('văn bản đã ký xong: hiện thông tin bản đã ký và mã SHA-256', async () => {
+    const sha = 'ab12cd34'.padEnd(56, '0') + 'ef567890';
+    installFetch({
+      ...baseRoutes(),
+      'GET /sign-requests/:id': () =>
+        detail(8, 'Quyết định đã ký', {
+          status: 'COMPLETED',
+          canSign: false,
+          completedAt: '2026-11-02T10:00:00',
+          participants: [
+            { userId: 4, fullName: 'Phạm Minh Tuấn', orderNo: 1, stepNo: 1, status: 'SIGNED', signedAt: '2026-11-01T09:00:00' },
+            { userId: 3, fullName: 'Lê Quang Cường', orderNo: 2, stepNo: 1, status: 'SIGNED', signedAt: '2026-11-02T10:00:00' },
+          ],
+          attachments: [
+            {
+              id: 9,
+              name: 'qd.pdf',
+              sizeBytes: 2048,
+              signable: true,
+              uploadedAt: '2026-10-30T09:00:00',
+              signed: true,
+              signedSizeBytes: 4096,
+              signedSha256: sha,
+              signedAt: '2026-11-02T10:00:00',
+            },
+          ],
+        }),
+    });
+    renderAt('/documents/8');
+    expect(await screen.findByText('Thông tin bản đã ký')).toBeInTheDocument();
+    expect(screen.getByText('qd (đã ký).pdf')).toBeInTheDocument();
+    expect(screen.getByText(/SHA-256 ab12cd34…ef567890/)).toBeInTheDocument();
+    expect(screen.getByText('2/2 · 1 bước')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tải bản đã ký/ })).toBeInTheDocument();
+  });
+
+  it('chưa có ảnh chữ ký: báo và khoá nút ký', async () => {
+    installFetch({ ...signRoutes(), 'GET /me': () => ({ ...ME, hasSignature: false }) });
+    renderAt('/documents/5/sign');
+    expect(await screen.findByText('Bạn chưa có ảnh chữ ký nên chưa ký được.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tải ảnh chữ ký' })).toHaveAttribute('href', '/profile');
+    expect(screen.getByRole('button', { name: /Ký văn bản/ })).toBeDisabled();
   });
 
   it('từ chối bắt buộc có lý do', async () => {
@@ -333,7 +401,7 @@ describe('Soạn tài liệu', () => {
     renderAt('/compose');
     await screen.findByText('Soạn tài liệu mới', { selector: 'h2' });
     await userEvent.type(screen.getByLabelText(/Tiêu đề/), 'Hợp đồng thử');
-    await userEvent.click(screen.getByRole('button', { name: 'Tiếp theo →' }));
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
     expect(await screen.findByText('Cần nhập tiêu đề và chọn ít nhất 1 tệp PDF cần ký')).toBeInTheDocument();
   });
 
@@ -359,28 +427,41 @@ describe('Soạn tài liệu', () => {
       }),
       'POST /sign-requests/:id/submit': () => detail(30, 'Hợp đồng thử'),
       'GET /sign-requests/:id': () => detail(30, 'Hợp đồng thử'),
+      'PUT /sign-requests/:id': () => detail(30, 'Hợp đồng thử', { status: 'DRAFT', canSign: false }),
+      'GET /sign-requests/:id/attachments/:aid/slots': () => ({
+        pages: [{ width: 595, height: 842 }],
+        slots: [{ orderNo: 1, page: 1, x: 72, y: 470, width: 170, height: 70 }], // ô có sẵn trong PDF
+      }),
+      'GET /sign-requests/:id/attachments/:aid/pages/:p': () => ({ imageDataUrl: 'data:image/png;base64,AA==' }),
     });
     renderAt('/compose');
     await screen.findByText('Soạn tài liệu mới', { selector: 'h2' });
 
     await userEvent.type(screen.getByLabelText(/Tiêu đề/), 'Hợp đồng thử');
     await userEvent.upload(screen.getByTestId('file-input'), new File(['%PDF-1.4'], 'hd.pdf', { type: 'application/pdf' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Tiếp theo →' }));
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
 
     // bước 2: chưa có người ký thì báo lỗi
-    await userEvent.click(screen.getByRole('button', { name: 'Tiếp theo →' }));
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
     expect(await screen.findByText('Cần ít nhất một người ký.')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Thêm người ký/ }));
     await userEvent.click(await screen.findByLabelText(/Nguyễn Văn An/));
     await userEvent.click(screen.getByRole('button', { name: 'Thêm đã chọn' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Tiếp theo →' }));
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+
+    // bước 3 Vị trí ký: lưu nháp + tải tệp trước, PDF mẫu có sẵn ô số 1 → đủ cho 1 người ký
+    expect(await screen.findByText('Đủ ô cho 1 người ký.')).toBeInTheDocument();
+    expect(calls.some((c) => c.method === 'GET' && c.path === '/sign-requests/30/attachments/51/slots')).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
 
     await userEvent.click(await screen.findByRole('button', { name: /Trình ký$/ }));
     const dialog = await screen.findByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: /Trình ký/ }));
 
     await waitFor(() => expect(calls.some((c) => c.path === '/sign-requests/30/submit')).toBe(true));
+    // không sửa ô → không ghi lại PDF
+    expect(calls.some((c) => c.method === 'PUT' && c.path.endsWith('/slots'))).toBe(false);
     const order = calls.filter((c) => c.method === 'POST').map((c) => c.path);
     expect(order.indexOf('/sign-requests')).toBeLessThan(order.indexOf('/sign-requests/30/attachments'));
     expect(order.indexOf('/sign-requests/30/attachments')).toBeLessThan(order.indexOf('/sign-requests/30/submit'));
@@ -390,6 +471,53 @@ describe('Soạn tài liệu', () => {
     };
     expect(created.signerIds).toEqual([1]);
     expect(created.title).toBe('Hợp đồng thử');
+  });
+
+  it('vị trí ký: ô thừa/thiếu chặn bước tiếp, sửa số ô rồi lưu vào PDF', async () => {
+    const draft = detail(32, 'Nháp có PDF', {
+      status: 'DRAFT',
+      canEdit: true,
+      canSign: false,
+      attachments: [{ id: 61, name: 'hd.pdf', sizeBytes: 9, signable: true, uploadedAt: '2026-11-01T09:00:00', signed: false }],
+      participants: [{ userId: 1, fullName: 'Nguyễn Văn An', orderNo: 1, stepNo: 1, status: 'WAITING' }],
+    });
+    const { calls } = installFetch({
+      ...baseRoutes(),
+      'GET /sign-requests/:id': () => draft,
+      'PUT /sign-requests/:id': () => draft,
+      'GET /sign-requests/:id/attachments/:aid/slots': () => ({
+        pages: [{ width: 595, height: 842 }],
+        slots: [{ orderNo: 4, page: 1, x: 100, y: 500, width: 150, height: 60 }],
+      }),
+      'PUT /sign-requests/:id/attachments/:aid/slots': (c) => ({
+        pages: [{ width: 595, height: 842 }],
+        slots: (c.body as { slots: unknown[] }).slots,
+      }),
+      'GET /sign-requests/:id/attachments/:aid/pages/:p': () => ({ imageDataUrl: 'data:image/png;base64,AA==' }),
+    });
+    renderAt('/compose?id=32');
+    await screen.findByLabelText(/Tiêu đề/);
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+
+    expect(
+      await screen.findByText(/Thiếu ô cho người ký số 1\. Có ô số 4 nhưng văn bản chỉ có 1 người ký\./),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+    expect(screen.getByText('Ô số 4 (trang 1)')).toBeInTheDocument(); // vẫn ở bước 3
+
+    // chọn ô, đổi số thứ tự 4 → 1
+    fireEvent.pointerDown(screen.getByRole('group', { name: /Ô ký 4/ }));
+    const num = screen.getByLabelText('Số thứ tự');
+    await userEvent.clear(num);
+    await userEvent.type(num, '1');
+    await userEvent.tab();
+    expect(await screen.findByText('Đủ ô cho 1 người ký.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+    await screen.findByText('Xem lại thông tin');
+    const put = calls.find((c) => c.method === 'PUT' && c.path === '/sign-requests/32/attachments/61/slots');
+    expect(put?.body).toMatchObject({ slots: [{ orderNo: 1, page: 1, x: 100, y: 500, width: 150, height: 60 }] });
   });
 
   it('sửa bản nháp gửi lại versionNo (khoá lạc quan)', async () => {
@@ -405,6 +533,60 @@ describe('Soạn tài liệu', () => {
     await userEvent.type(title, ' (sửa)');
     await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
     await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ versionNo: 3 }));
+  });
+
+  it('bước ký: gộp người vào bước trên thì gửi signerSteps; gộp hết thì thành song song', async () => {
+    const three = [1, 2, 3].map((id, i) => ({
+      userId: id,
+      fullName: PEOPLE[id - 1].fullName,
+      orderNo: i + 1,
+      stepNo: i + 1,
+      status: 'WAITING' as const,
+    }));
+    const draft = detail(33, 'Nháp theo bước', { status: 'DRAFT', canEdit: true, canSign: false, participants: three });
+    const { calls } = installFetch({
+      ...baseRoutes(),
+      'GET /sign-requests/:id': () => draft,
+      'PUT /sign-requests/:id': () => ({ ...draft, versionNo: 2 }),
+    });
+    renderAt('/compose?id=33');
+    await screen.findByLabelText(/Tiêu đề/);
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+    expect(await screen.findByTestId('step-3')).toBeInTheDocument();
+
+    const joins = () => screen.getAllByRole('button', { name: /Ký cùng bước trên/ });
+    await userEvent.click(joins()[0]); // người 2 ký cùng lúc với người 1
+    expect(screen.queryByTestId('step-3')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('step-1')).getByText(/2 người ký cùng lúc/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ mode: 'SEQ', signerSteps: [1, 1, 2] }),
+    );
+  });
+
+  it('bước ký: gộp hết vào một bước thì tự chuyển sang Song song', async () => {
+    const two = [1, 2].map((id, i) => ({
+      userId: id,
+      fullName: PEOPLE[id - 1].fullName,
+      orderNo: i + 1,
+      stepNo: i + 1,
+      status: 'WAITING' as const,
+    }));
+    const draft = detail(34, 'Nháp hai người', { status: 'DRAFT', canEdit: true, canSign: false, participants: two });
+    const { calls } = installFetch({
+      ...baseRoutes(),
+      'GET /sign-requests/:id': () => draft,
+      'PUT /sign-requests/:id': () => ({ ...draft, versionNo: 2 }),
+    });
+    renderAt('/compose?id=34');
+    await screen.findByLabelText(/Tiêu đề/);
+    await userEvent.click(screen.getByRole('button', { name: /Tiếp theo/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Ký cùng bước trên/ }));
+    expect(await screen.findByText('Mọi người đã cùng một bước nên chuyển thành ký Song song.')).toBeInTheDocument();
+    expect(screen.getByText('Tất cả người ký nhận yêu cầu cùng lúc.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ mode: 'PAR' }));
+    expect((calls.find((c) => c.method === 'PUT')?.body as { signerSteps?: number[] }).signerSteps).toBeUndefined();
   });
 
   it('không có quyền document.create thì hiện trang Không có quyền', async () => {
@@ -449,5 +631,71 @@ describe('Báo cáo và quản trị', () => {
     installFetch(baseRoutes());
     renderAt('/admin');
     expect(await screen.findByText('Không có quyền truy cập')).toBeInTheDocument();
+  });
+});
+
+describe('Chữ ký của tôi', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+  beforeEach(() => {
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:goc', revokeObjectURL: () => undefined }));
+  });
+
+  it('tải ảnh → xem trước đã tách nền → lưu → hiện ảnh; rồi xoá', async () => {
+    let saved = false;
+    const { calls } = installFetch({
+      ...baseRoutes(),
+      'GET /me': () => ({ ...ME, hasSignature: saved, signatureUpdatedAt: saved ? '2026-11-22T08:00:00' : null }),
+      'POST /me/signature/preview': () => ({ imageDataUrl: PNG, updatedAt: null }),
+      'POST /me/signature': () => {
+        saved = true;
+        return { imageDataUrl: PNG, updatedAt: '2026-11-22T08:00:00' };
+      },
+      'GET /me/signature': () => ({ imageDataUrl: PNG, updatedAt: '2026-11-22T08:00:00' }),
+      'DELETE /me/signature': () => {
+        saved = false;
+        return undefined;
+      },
+    });
+    renderAt('/profile');
+    expect(await screen.findByText('Chưa có chữ ký')).toBeInTheDocument();
+
+    await userEvent.upload(screen.getByTestId('signature-input'), new File(['x'], 'chu-ky.png', { type: 'image/png' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByAltText('Chữ ký đã tách nền')).toHaveAttribute('src', PNG);
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/me/signature/preview')).toBe(true);
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/me/signature')).toBe(false);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu chữ ký' }));
+    expect(await screen.findByAltText('Chữ ký của tôi')).toHaveAttribute('src', PNG);
+    expect(screen.getByRole('button', { name: /Thay ảnh/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Xoá/ }));
+    await screen.findByText('Xoá chữ ký?');
+    await userEvent.click(screen.getAllByRole('button', { name: 'Xoá' }).slice(-1)[0]);
+    expect(await screen.findByText('Chưa có chữ ký')).toBeInTheDocument();
+    expect(calls.some((c) => c.method === 'DELETE' && c.path === '/me/signature')).toBe(true);
+  });
+
+  it('ảnh không có nét chữ ký: hiện lỗi từ máy chủ, không cho lưu', async () => {
+    installFetch({
+      ...baseRoutes(),
+      'POST /me/signature/preview': () =>
+        fail(422, 'BUSINESS_RULE', 'Không tìm thấy nét chữ ký trong ảnh. Hãy chụp lại rõ hơn, bút mực đậm trên giấy trắng.'),
+    });
+    renderAt('/profile');
+    await userEvent.upload(await screen.findByTestId('signature-input'), new File(['x'], 'trang.jpg', { type: 'image/jpeg' }));
+    expect(await screen.findByText(/Không tìm thấy nét chữ ký/)).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'Lưu chữ ký' })).toBeDisabled();
+  });
+
+  it('chặn tệp không phải PNG/JPG ngay ở trình duyệt', async () => {
+    const { calls } = installFetch(baseRoutes());
+    renderAt('/profile');
+    await userEvent.upload(await screen.findByTestId('signature-input'), new File(['x'], 'a.gif', { type: 'image/gif' }), {
+      applyAccept: false,
+    });
+    expect(await screen.findByText('Chỉ nhận ảnh PNG hoặc JPG')).toBeInTheDocument();
+    expect(calls.some((c) => c.method === 'POST' && c.path.startsWith('/me/signature'))).toBe(false);
   });
 });

@@ -20,6 +20,7 @@
     <java.version>25</java.version>
     <spotless.version>3.11.0</spotless.version>
     <archunit.version>1.5.1</archunit.version>
+    <pdfbox.version>3.0.5</pdfbox.version>
   </properties>
 
   <dependencies>
@@ -70,6 +71,12 @@
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <!-- Đọc/ghi annotation ô ký, render trang PDF (riêng KSVB) -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>

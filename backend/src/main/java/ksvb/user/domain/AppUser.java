@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -44,6 +45,13 @@ public class AppUser extends Auditable {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    /** Tên tệp PNG chữ ký đã tách nền (UUID do server sinh); null = chưa có chữ ký. */
+    @Column(name = "signature_stored_name", length = 100)
+    private String signatureStoredName;
+
+    @Column(name = "signature_updated_at")
+    private LocalDateTime signatureUpdatedAt;
 
     /** Quyền của lần gọi hiện tại (từ token hoặc suy ra ở dev); không lưu DB. */
     @Transient
@@ -82,6 +90,26 @@ public class AppUser extends Auditable {
         if (hasText(jobTitle) && !jobTitle.equals(this.jobTitle)) { this.jobTitle = jobTitle; changed = true; }
         return changed;
     }
+
+    /** Đặt ảnh chữ ký mới; trả về tên tệp cũ (để xoá) hoặc null. */
+    public String replaceSignature(String storedName, LocalDateTime now) {
+        String old = this.signatureStoredName;
+        this.signatureStoredName = storedName;
+        this.signatureUpdatedAt = now;
+        return old;
+    }
+
+    /** Bỏ ảnh chữ ký; trả về tên tệp cũ (để xoá) hoặc null. */
+    public String clearSignature() {
+        String old = this.signatureStoredName;
+        this.signatureStoredName = null;
+        this.signatureUpdatedAt = null;
+        return old;
+    }
+
+    public boolean hasSignature() { return signatureStoredName != null; }
+    public String getSignatureStoredName() { return signatureStoredName; }
+    public LocalDateTime getSignatureUpdatedAt() { return signatureUpdatedAt; }
 
     private static boolean hasText(String s) {
         return s != null && !s.isBlank();

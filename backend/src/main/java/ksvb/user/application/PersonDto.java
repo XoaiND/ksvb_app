@@ -6,9 +6,9 @@ import org.jspecify.annotations.Nullable;
 
 public record PersonDto(Long id, String fullName, String email, @Nullable String unitName, @Nullable String jobTitle,
                         @Nullable UserRole role,
-                        boolean active) {
+                        boolean active, boolean hasSignature) {
     public static PersonDto of(AppUser u) {
         return new PersonDto(u.getId(), u.getFullName(), u.getEmail(), u.getUnitName(), u.getJobTitle(),
-                u.getRole(), u.isActive());
+                u.getRole(), u.isActive(), u.hasSignature());
     }
 }

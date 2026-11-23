@@ -2,6 +2,7 @@ package ksvb.signrequest.application;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -20,11 +21,13 @@ import ksvb.shared.paging.PageResponse;
 import ksvb.signrequest.domain.DocStatus;
 import ksvb.signrequest.domain.NotificationService;
 import ksvb.signrequest.domain.SignRequest;
+import ksvb.signrequest.domain.SignSlot;
 import ksvb.signrequest.infra.DocNumberGenerator;
 import ksvb.signrequest.infra.SignRequestRepository;
 import ksvb.signrequest.infra.SignRequestSpecs;
 import ksvb.signrequest.infra.SignRequestSpecs.Scope;
 import ksvb.user.application.PersonDto;
+import ksvb.user.application.SignatureService;
 import ksvb.user.domain.AppUser;
 import ksvb.user.infra.UserRepository;
 import org.slf4j.Logger;
@@ -50,15 +53,20 @@ public class SignRequestService {
     private final AuditService audit;
     private final NotificationService notifier;
     private final OutboxService outbox;
+    private final SignSlotService slots;
+    private final SignatureService signatures;
 
     public SignRequestService(SignRequestRepository requests, UserRepository users, DocNumberGenerator numbers,
-                              AuditService audit, NotificationService notifier, OutboxService outbox) {
+                              AuditService audit, NotificationService notifier, OutboxService outbox,
+                              SignSlotService slots, SignatureService signatures) {
         this.requests = requests;
         this.users = users;
         this.numbers = numbers;
         this.audit = audit;
         this.notifier = notifier;
         this.outbox = outbox;
+        this.slots = slots;
+        this.signatures = signatures;
     }
 
     // ------------------------------------------------------------------ truy vấn
@@ -77,6 +85,14 @@ public class SignRequestService {
     @Transactional(readOnly = true)
     public SignRequestDetail get(AppUser me, Long id) {
         return toDetail(load(me, id), me);
+    }
+
+    /** Ảnh chữ ký của từng người ký (theo thứ tự ký), cho ai xem được văn bản: xem trước ô ký trước khi trình. */
+    @Transactional(readOnly = true)
+    public List<SignerSignatureDto> signerSignatures(AppUser me, Long id) {
+        return load(me, id).getParticipants().stream()
+                .map(p -> new SignerSignatureDto(p.getUser().getId(), signatures.dataUrlOf(p.getUser())))
+                .toList();
     }
 
     // ------------------------------------------------------------------ soạn thảo
@@ -117,7 +133,7 @@ public class SignRequestService {
         requireCreator(me, r, "Chỉ người tạo mới được sửa văn bản");
         r.edit(me.getId(), in.title().trim(), in.docType().trim(), in.description(), in.priority(), in.mode(),
                 in.deadline(), in.message(), Boolean.TRUE.equals(in.shared()), now);
-        r.replaceSigners(resolveUsers(in.signerIds(), "người ký"));
+        r.replaceSigners(resolveUsers(in.signerIds(), "người ký"), in.signerSteps());
         Set<Long> watchers = new LinkedHashSet<>(in.watcherIds() == null ? List.of() : in.watcherIds());
         if (!watchers.isEmpty()) {
             resolveUsers(new ArrayList<>(watchers), "người theo dõi");
@@ -133,6 +149,8 @@ public class SignRequestService {
         LocalDateTime now = LocalDateTime.now();
         requireCreator(me, r, "Chỉ người tạo mới được trình ký");
         r.submit(me.getId(), r.getCode() == null ? numbers.next(r.getDocType(), now.toLocalDate()) : null, now);
+        // ô ký trong PDF phải khớp người ký (lỗi → rollback, văn bản vẫn là nháp)
+        SignSlot.requireMatch(slots.slotOrders(r), r.getParticipants().size());
         audit.log("SUBMIT", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SUBMITTED, me.getId());
         safeNotify(() -> notifier.notifyTurn(r));
@@ -140,10 +158,18 @@ public class SignRequestService {
     }
 
     @Transactional
-    public SignRequestDetail sign(AppUser me, Long id, String note) {
+    public SignRequestDetail sign(AppUser me, Long id, String note, boolean showCaption) {
         SignRequest r = find(id);
         requireParticipant(me, r);
-        r.sign(me.getId(), note, LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        r.sign(me.getId(), note, now);
+        // đóng ảnh chữ ký vào các ô của người này trên PDF (lỗi → rollback, tệp mới bị xoá)
+        int order = r.getParticipants().stream().filter(p -> p.getUser().getId().equals(me.getId())).findFirst()
+                .orElseThrow().getOrderNo();
+        List<String> caption = showCaption
+                ? List.of(me.getFullName(), now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
+                : List.of();
+        slots.stamp(r, order, signatures.pngOf(me), caption);
         audit.log("SIGN", codeOf(r), r.getTitle());
         event(r, SignRequestEvents.SIGNED, me.getId());
         if (r.getStatus() == DocStatus.COMPLETED) {

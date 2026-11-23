@@ -5,11 +5,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
 import ksvb.PostgresIntegrationTest;
+import ksvb.signrequest.infra.PdfSignatureSlots;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -26,6 +28,7 @@ class SignRequestApiTest extends PostgresIntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
+    @Autowired PdfSignatureSlots pdf;
 
     private JsonNode call(MvcResult r) throws Exception {
         return json.readTree(r.getResponse().getContentAsString(StandardCharsets.UTF_8));
@@ -52,6 +55,22 @@ class SignRequestApiTest extends PostgresIntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("BUSINESS_RULE"))
                 .andExpect(jsonPath("$.reason").value("INVALID_SCOPE"));
+    }
+
+    @Test
+    void buocKy_luuTheoNguoi_vaBuocSaiBao422() throws Exception {
+        MvcResult created = as(4, post("/api/sign-requests").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"Theo bước","docType":"Hợp đồng","mode":"SEQ","signerIds":[1,2,3],"signerSteps":[1,1,2]}"""));
+        assertThat(created.getResponse().getStatus()).isEqualTo(201);
+        JsonNode d = call(created);
+        assertThat(d.get("mode").asString()).isEqualTo("SEQ");
+        assertThat(d.get("participants").get(1).get("stepNo").asInt()).isEqualTo(1);
+        assertThat(d.get("participants").get(2).get("stepNo").asInt()).isEqualTo(2);
+
+        mvc.perform(post("/api/sign-requests").contentType(MediaType.APPLICATION_JSON).header("X-User-Id", 4).content("""
+                        {"title":"Sai bước","docType":"Hợp đồng","mode":"SEQ","signerIds":[1,2],"signerSteps":[1,3]}"""))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.reason").value("INVALID_STEPS"));
     }
 
     @Test
@@ -85,11 +104,61 @@ class SignRequestApiTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.code").value("BUSINESS_RULE"))
                 .andExpect(jsonPath("$.reason").value("INVALID_PDF"));
 
-        mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
-                        .file(new MockMultipartFile("file", "hd.pdf", "application/pdf", "%PDF-1.4 demo".getBytes()))
+        // PDF chỉ có sẵn ô ký số 1 (annotation) trong khi có 2 người ký
+        MvcResult up = mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
+                .file(new MockMultipartFile("file", "hd.pdf", "application/pdf", pdf.samplePdf("Hop dong", 1)))
+                .header("X-User-Id", 4)).andReturn();
+        assertThat(up.getResponse().getStatus()).isEqualTo(201);
+        assertThat(call(up).get("signable").asBoolean()).isTrue();
+        long pdfId = call(up).get("id").asLong();
+        String slotsUrl = "/api/sign-requests/" + id + "/attachments/" + pdfId + "/slots";
+
+        mvc.perform(get(slotsUrl).header("X-User-Id", 4))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pages.length()").value(1))
+                .andExpect(jsonPath("$.pages[0].width").value(595.28))
+                .andExpect(jsonPath("$.slots.length()").value(1))
+                .andExpect(jsonPath("$.slots[0].orderNo").value(1))
+                .andExpect(jsonPath("$.slots[0].x").value(72.0))
+                .andExpect(jsonPath("$.slots[0].y").value(470.0));
+
+        // thiếu ô số 2 → không trình ký được
+        mvc.perform(post("/api/sign-requests/" + id + "/submit").header("X-User-Id", 4))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.reason").value("SIGN_SLOTS_MISMATCH"));
+
+        // người không phải người tạo không đặt được ô
+        String twoSlots = """
+                {"slots":[{"orderNo":1,"page":1,"x":72,"y":470,"width":170,"height":70},
+                          {"orderNo":2,"page":1,"x":330,"y":600,"width":150,"height":60}]}""";
+        mvc.perform(put(slotsUrl).contentType(MediaType.APPLICATION_JSON).content(twoSlots).header("X-User-Id", 1))
+                .andExpect(status().isForbidden());
+        // trang không tồn tại
+        mvc.perform(put(slotsUrl).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slots\":[{\"orderNo\":1,\"page\":3,\"x\":1,\"y\":1,\"width\":50,\"height\":20}]}")
                         .header("X-User-Id", 4))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.signable").value(true));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.reason").value("INVALID_SLOT"));
+
+        mvc.perform(put(slotsUrl).contentType(MediaType.APPLICATION_JSON).content(twoSlots).header("X-User-Id", 4))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slots.length()").value(2))
+                .andExpect(jsonPath("$.slots[1].orderNo").value(2))
+                .andExpect(jsonPath("$.slots[1].x").value(330.0))
+                .andExpect(jsonPath("$.slots[1].width").value(150.0));
+
+        mvc.perform(get("/api/sign-requests/" + id + "/attachments/" + pdfId + "/pages/1").header("X-User-Id", 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageDataUrl").value(org.hamcrest.Matchers.startsWith("data:image/jpeg;base64,")));
+
+        // ảnh chữ ký của người ký (để xem trước ô ký): ai xem được văn bản thì xem được; người ngoài thì không
+        mvc.perform(get("/api/sign-requests/" + id + "/signer-signatures").header("X-User-Id", 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].userId").value(1))
+                .andExpect(jsonPath("$[0].imageDataUrl").value(org.hamcrest.Matchers.startsWith("data:image/png;base64,")));
+        mvc.perform(get("/api/sign-requests/" + id + "/signer-signatures").header("X-User-Id", 10))
+                .andExpect(status().isForbidden());
 
         mvc.perform(post("/api/sign-requests/" + id + "/submit").header("X-User-Id", 4))
                 .andExpect(status().isOk())
@@ -115,14 +184,52 @@ class SignRequestApiTest extends PostgresIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
 
-        // người theo dõi (5) xem và tải được tệp
+        // người theo dõi (5) xem và tải được tệp; đã có bản đóng chữ ký, các ô ký đã được thay bằng chữ ký
         JsonNode detail = call(as(5, get("/api/sign-requests/" + id)));
         long att = detail.get("attachments").get(0).get("id").asLong();
+        assertThat(detail.get("attachments").get(0).get("signed").asBoolean()).isTrue();
         mvc.perform(get("/api/sign-requests/" + id + "/attachments/" + att).header("X-User-Id", 5))
                 .andExpect(status().isOk());
+        MvcResult signedPdf = mvc.perform(get("/api/sign-requests/" + id + "/attachments/" + att).param("signed", "true")
+                        .header("X-User-Id", 5))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(signedPdf.getResponse().getHeader("Content-Disposition")).contains("UTF-8''hd%20%28%C4%91%C3%A3%20k%C3%BD%29.pdf");
+        byte[] signedBytes = signedPdf.getResponse().getContentAsByteArray();
+        assertThat(new String(signedBytes, 0, 5)).isEqualTo("%PDF-");
+        // thông tin bản đã ký khớp tệp tải về
+        JsonNode a0 = detail.get("attachments").get(0);
+        assertThat(a0.get("signedSizeBytes").asLong()).isEqualTo(signedBytes.length);
+        assertThat(a0.get("signedSha256").asString()).isEqualTo(java.util.HexFormat.of()
+                .formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(signedBytes)));
+        assertThat(a0.get("signedAt").isNull()).isFalse();
+        mvc.perform(get("/api/sign-requests/" + id + "/attachments/" + att + "/pages/1").param("original", "true")
+                        .header("X-User-Id", 5))
+                .andExpect(status().isOk());
+        mvc.perform(get(slotsUrl).header("X-User-Id", 5)).andExpect(jsonPath("$.slots.length()").value(0));
         // người ngoài thì không
         mvc.perform(get("/api/sign-requests/" + id + "/attachments/" + att).header("X-User-Id", 10))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void kyKhiChuaCoAnhChuKy_bao422_vanBanGiuNguyen() throws Exception {
+        // người 5 chưa có ảnh chữ ký (dữ liệu mẫu chỉ có cho 1, 2, 3, 6)
+        MvcResult created = as(4, post("/api/sign-requests").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"Công văn cần người 5 ký","docType":"Công văn","signerIds":[5]}"""));
+        long id = call(created).get("id").asLong();
+        mvc.perform(multipart("/api/sign-requests/" + id + "/attachments")
+                        .file(new MockMultipartFile("file", "cv.pdf", "application/pdf", pdf.samplePdf("Cong van", 1)))
+                        .header("X-User-Id", 4))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/sign-requests/" + id + "/submit").header("X-User-Id", 4)).andExpect(status().isOk());
+
+        mvc.perform(post("/api/sign-requests/" + id + "/sign").header("X-User-Id", 5))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.reason").value("NO_SIGNATURE_IMAGE"));
+        mvc.perform(get("/api/sign-requests/" + id).header("X-User-Id", 5))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.participants[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.attachments[0].signed").value(false));
     }
 
     @Test

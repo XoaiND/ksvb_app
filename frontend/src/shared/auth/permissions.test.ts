@@ -26,7 +26,7 @@ describe('ma trận quyền', () => {
   });
 
   it('hasPermission theo danh sách quyền của /api/me', () => {
-    const me = { id: 1, fullName: 'A', email: 'a@x', permissions: ['document.sign'] };
+    const me = { id: 1, fullName: 'A', email: 'a@x', permissions: ['document.sign'], hasSignature: false };
     expect(hasPermission(me, 'document.sign')).toBe(true);
     expect(hasPermission(me, 'document.create')).toBe(false);
     expect(hasPermission(null, 'document.sign')).toBe(false);

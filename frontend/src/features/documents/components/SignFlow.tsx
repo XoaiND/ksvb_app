@@ -5,8 +5,11 @@ import { fmtDate, fmtDateTime } from '../../../shared/lib/format';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
 import { SignerStatusTag } from './StatusTags';
 
-/** Danh sách người ký theo thứ tự, kèm trạng thái và ghi chú/lý do. */
+/** Danh sách người ký theo thứ tự (tuần tự có bước nhiều người thì ghi "Bước k"), kèm trạng thái và ghi chú/lý do. */
 export function FlowList({ doc }: { doc: SignRequestDetail }) {
+  const grouped = new Set(doc.participants.map((p) => p.stepNo)).size < doc.participants.length;
+  const prefix = (p: SignRequestDetail['participants'][number]) =>
+    doc.mode !== 'SEQ' ? '' : grouped ? `Bước ${p.stepNo} · ` : `${p.orderNo}. `;
   return (
     <ItemList
       items={doc.participants}
@@ -15,7 +18,7 @@ export function FlowList({ doc }: { doc: SignRequestDetail }) {
         <ItemRow
           extra={<SignerStatusTag status={p.status} />}
           avatar={<PersonAvatar id={p.userId} name={p.fullName} />}
-          title={`${doc.mode === 'SEQ' ? `${p.orderNo}. ` : ''}${p.fullName}`}
+          title={`${prefix(p)}${p.fullName}`}
           description={
             <Flex vertical>
               <span>{[p.jobTitle, p.unitName].filter(Boolean).join(' · ')}</span>

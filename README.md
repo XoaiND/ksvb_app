@@ -77,6 +77,8 @@ Frontend (Vite): `VITE_API_BASE_URL` (mặc định `/api`), `VITE_KEYCLOAK_URL`
 | Method | Đường dẫn | Quyền |
 |---|---|---|
 | GET | `/api/me`, `/api/users` | đăng nhập |
+| GET, POST, DELETE | `/api/me/signature` (ảnh chữ ký của mình; POST multipart `file`) | đăng nhập |
+| POST | `/api/me/signature/preview` (tách nền, không lưu) | đăng nhập |
 | GET | `/api/dashboard?year=` | đăng nhập |
 | GET | `/api/reports/summary` | `report.view` |
 | GET | `/api/sign-requests?scope=pending\|mine\|shared\|watching&q&docType&unit&status&page&size` | đăng nhập |
@@ -84,7 +86,11 @@ Frontend (Vite): `VITE_API_BASE_URL` (mặc định `/api`), `VITE_KEYCLOAK_URL`
 | POST / PUT / DELETE | `/api/sign-requests`, `/api/sign-requests/{id}` (PUT cần `versionNo`) | `document.create` |
 | POST | `/api/sign-requests/{id}/submit`, `/recall`, `/cancel`, `/remind` | `document.create` |
 | POST | `/api/sign-requests/{id}/sign`, `/reject` | `document.sign` |
-| POST / GET / DELETE | `/api/sign-requests/{id}/attachments[/{attachmentId}]` | `document.create` (tải xuống: xem được văn bản) |
+| POST / GET / DELETE | `/api/sign-requests/{id}/attachments[/{attachmentId}]` (GET `?signed=true`: bản đã đóng chữ ký) | `document.create` (tải xuống: xem được văn bản) |
+| GET | `/api/sign-requests/{id}/attachments/{attachmentId}/slots` (kích thước trang + ô ký đọc từ PDF) | xem được văn bản |
+| PUT | `/api/sign-requests/{id}/attachments/{attachmentId}/slots` (ghi lại ô ký vào PDF) | `document.create`, người tạo, nháp |
+| GET | `/api/sign-requests/{id}/attachments/{attachmentId}/pages/{page}` (ảnh trang JPEG, data URL; `?original=true`: bản gốc) | xem được văn bản |
+| GET | `/api/sign-requests/{id}/signer-signatures` (ảnh chữ ký của từng người ký, null = chưa có) | xem được văn bản |
 | GET / POST / DELETE | `/api/templates`, `/api/templates/{id}`, `POST /api/templates/{id}/use` | đăng nhập (mẫu của mình) |
 | GET / PATCH | `/api/admin/users`, `/api/admin/users/{id}` | `user.manage` |
 | GET | `/api/admin/audit-logs` | `audit.view` |

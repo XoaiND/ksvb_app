@@ -1,12 +1,16 @@
 import { download, put, request, seg } from '../../shared/api/http';
 import type {
   Attachment,
+  PageImage,
   ListParams,
   PageResult,
   Person,
   SaveSignRequestInput,
   SignRequestDetail,
   SignRequestSummary,
+  SignerSignature,
+  SignSlot,
+  SlotLayout,
 } from '../../shared/api/types';
 
 const SR = '/sign-requests';
@@ -32,7 +36,9 @@ export const documentsApi = {
   update: (id: number, b: SaveSignRequestInput) => put<SignRequestDetail>(`${SR}/${seg(id)}`, b),
   remove: (id: number) => request<void>('DELETE', `${SR}/${seg(id)}`),
   submit: (id: number) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/submit`),
-  sign: (id: number, n?: string) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/sign`, { body: note(n) }),
+  /** Ký; máy chủ đóng ảnh chữ ký vào các ô của người ký (kèm họ tên + thời gian nếu showCaption). */
+  sign: (id: number, n?: string, showCaption = true) =>
+    request<SignRequestDetail>('POST', `${SR}/${seg(id)}/sign`, { body: { ...note(n), showCaption } }),
   reject: (id: number, reason: string) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/reject`, { body: note(reason) }),
   cancel: (id: number, reason: string) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/cancel`, { body: note(reason) }),
   recall: (id: number) => request<SignRequestDetail>('POST', `${SR}/${seg(id)}/recall`),
@@ -44,6 +50,23 @@ export const documentsApi = {
   },
   removeAttachment: (id: number, attachmentId: number) =>
     request<void>('DELETE', `${SR}/${seg(id)}/attachments/${seg(attachmentId)}`),
-  downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>) =>
-    download(`${SR}/${seg(id)}/attachments/${seg(a.id)}`, a.name),
+  /** Ô ký (annotation trong PDF) + kích thước trang của một tệp cần ký. */
+  slots: (id: number, attachmentId: number) =>
+    request<SlotLayout>('GET', `${SR}/${seg(id)}/attachments/${seg(attachmentId)}/slots`),
+  /** Ghi lại toàn bộ ô ký vào tệp PDF. */
+  saveSlots: (id: number, attachmentId: number, slots: SignSlot[]) =>
+    put<SlotLayout>(`${SR}/${seg(id)}/attachments/${seg(attachmentId)}/slots`, { slots }),
+  /** Ảnh một trang (JPEG data URL): bản đang có hiệu lực, hoặc bản gốc (`original`). */
+  page: (id: number, attachmentId: number, page: number, original = false) =>
+    request<PageImage>('GET', `${SR}/${seg(id)}/attachments/${seg(attachmentId)}/pages/${page}`, {
+      query: { original: original || undefined },
+    }),
+  /** Ảnh chữ ký của từng người ký (null = chưa tải ảnh), để xem trước ô ký. */
+  signerSignatures: (id: number) => request<SignerSignature[]>('GET', `${SR}/${seg(id)}/signer-signatures`),
+  /** Tải tệp gốc, hoặc bản đã đóng chữ ký (`signed`). */
+  downloadAttachment: (id: number, a: Pick<Attachment, 'id' | 'name'>, signed = false) =>
+    download(
+      `${SR}/${seg(id)}/attachments/${seg(a.id)}${signed ? '?signed=true' : ''}`,
+      signed ? a.name.replace(/(\.pdf)?$/i, ' (đã ký)$1') : a.name,
+    ),
 };

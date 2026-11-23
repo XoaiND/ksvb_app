@@ -1,4 +1,4 @@
-import type { DocStatus, Priority, SignerStatus } from '../../../shared/api/types';
+import type { DocStatus, Priority, SignerStatus, SignMode } from '../../../shared/api/types';
 
 /** Nhãn + màu trạng thái (màu là tên preset của Ant Design Tag, không ghi cứng mã màu). */
 export const DOC_STATUS: Record<DocStatus, { label: string; color: string }> = {
@@ -21,3 +21,13 @@ export const PRIORITY_LABEL: Record<Priority, string> = { NORMAL: 'Thường', H
 
 /** Loại văn bản (khớp tiền tố số hiệu của backend). */
 export const DOC_TYPES = ['Hợp đồng', 'Quyết định', 'Tờ trình', 'Báo giá', 'Biên bản', 'Công văn'];
+
+/**
+ * Nhãn cách ký theo bước của từng người (cùng thứ tự người ký): "Song song", "Tuần tự", hoặc
+ * "Tuần tự · 3 bước (có bước ký cùng lúc)" khi có bước nhiều người ký cùng lúc.
+ */
+export function modeLabel(mode: SignMode, steps: number[]): string {
+  if (mode === 'PAR') return 'Song song';
+  const k = new Set(steps).size;
+  return k < steps.length ? `Tuần tự · ${k} bước (có bước ký cùng lúc)` : 'Tuần tự';
+}

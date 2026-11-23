@@ -2,6 +2,7 @@ package ksvb.signrequest.api;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import ksvb.shared.paging.PageResponse;
 import ksvb.signrequest.application.ActionRequest;
 import ksvb.signrequest.application.AttachmentDto;
@@ -10,6 +11,11 @@ import ksvb.signrequest.application.SaveSignRequest;
 import ksvb.signrequest.application.SignRequestDetail;
 import ksvb.signrequest.application.SignRequestService;
 import ksvb.signrequest.application.SignRequestSummary;
+import ksvb.signrequest.application.SignSlotService;
+import ksvb.signrequest.application.SignerSignatureDto;
+import ksvb.signrequest.application.SlotDtos.PageImageDto;
+import ksvb.signrequest.application.SlotDtos.SaveSlots;
+import ksvb.signrequest.application.SlotDtos.SlotLayoutDto;
 import ksvb.signrequest.domain.DocStatus;
 import ksvb.user.application.CurrentAppUser;
 import org.springframework.core.io.Resource;
@@ -42,11 +48,14 @@ public class SignRequestController {
 
     private final SignRequestService service;
     private final AttachmentService attachments;
+    private final SignSlotService slots;
     private final CurrentAppUser currentUser;
 
-    public SignRequestController(SignRequestService service, AttachmentService attachments, CurrentAppUser currentUser) {
+    public SignRequestController(SignRequestService service, AttachmentService attachments, SignSlotService slots,
+                                 CurrentAppUser currentUser) {
         this.service = service;
         this.attachments = attachments;
+        this.slots = slots;
         this.currentUser = currentUser;
     }
 
@@ -65,6 +74,12 @@ public class SignRequestController {
     @GetMapping("/{id}")
     public SignRequestDetail get(@PathVariable Long id) {
         return service.get(currentUser.get(), id);
+    }
+
+    /** Ảnh chữ ký của từng người ký (null = chưa có), để xem trước ô ký. */
+    @GetMapping("/{id}/signer-signatures")
+    public List<SignerSignatureDto> signerSignatures(@PathVariable Long id) {
+        return service.signerSignatures(currentUser.get(), id);
     }
 
     @PostMapping
@@ -96,7 +111,8 @@ public class SignRequestController {
     @PostMapping("/{id}/sign")
     @PreAuthorize(SIGN)
     public SignRequestDetail sign(@PathVariable Long id, @Valid @RequestBody(required = false) ActionRequest body) {
-        return service.sign(currentUser.get(), id, body == null ? null : body.note());
+        return service.sign(currentUser.get(), id, body == null ? null : body.note(),
+                body == null || body.showCaption() == null || body.showCaption());
     }
 
     @PostMapping("/{id}/reject")
@@ -134,8 +150,9 @@ public class SignRequestController {
     }
 
     @GetMapping("/{id}/attachments/{attachmentId}")
-    public ResponseEntity<Resource> download(@PathVariable Long id, @PathVariable Long attachmentId) {
-        AttachmentService.Download d = attachments.download(currentUser.get(), id, attachmentId);
+    public ResponseEntity<Resource> download(@PathVariable Long id, @PathVariable Long attachmentId,
+                                             @RequestParam(defaultValue = "false") boolean signed) {
+        AttachmentService.Download d = attachments.download(currentUser.get(), id, attachmentId, signed);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(d.fileName(), java.nio.charset.StandardCharsets.UTF_8)
@@ -143,6 +160,29 @@ public class SignRequestController {
                 .header("X-Content-Type-Options", "nosniff")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(d.resource());
+    }
+
+    // ------------------------------------------------------------------ ô ký (annotation trong PDF cần ký)
+
+    /** Kích thước trang + ô ký đọc từ annotation trong PDF (toạ độ trang hiển thị, point, gốc trên-trái). */
+    @GetMapping("/{id}/attachments/{attachmentId}/slots")
+    public SlotLayoutDto slots(@PathVariable Long id, @PathVariable Long attachmentId) {
+        return slots.layout(currentUser.get(), id, attachmentId);
+    }
+
+    /** Ghi lại toàn bộ ô ký vào tệp PDF (chỉ người tạo, bản nháp). */
+    @PutMapping("/{id}/attachments/{attachmentId}/slots")
+    @PreAuthorize(CREATE)
+    public SlotLayoutDto saveSlots(@PathVariable Long id, @PathVariable Long attachmentId,
+                                   @Valid @RequestBody SaveSlots body) {
+        return slots.save(currentUser.get(), id, attachmentId, body);
+    }
+
+    /** Ảnh một trang (JPEG data URL), không vẽ ô ký; mặc định bản đang có hiệu lực, {@code original=true} = bản gốc. */
+    @GetMapping("/{id}/attachments/{attachmentId}/pages/{page}")
+    public PageImageDto page(@PathVariable Long id, @PathVariable Long attachmentId, @PathVariable int page,
+                             @RequestParam(defaultValue = "false") boolean original) {
+        return slots.page(currentUser.get(), id, attachmentId, page, original);
     }
 
     @DeleteMapping("/{id}/attachments/{attachmentId}")

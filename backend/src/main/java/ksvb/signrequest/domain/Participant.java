@@ -34,6 +34,10 @@ public class Participant {
     @Column(name = "order_no", nullable = false)
     private int orderNo;
 
+    /** Bước ký (1..k): người cùng bước ký cùng lúc; bước sau mở khi bước trước đã ký hết. */
+    @Column(name = "step_no", nullable = false)
+    private int stepNo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private SignerStatus status = SignerStatus.WAITING;
@@ -46,10 +50,11 @@ public class Participant {
 
     protected Participant() {}
 
-    Participant(SignRequest request, AppUser user, int orderNo) {
+    Participant(SignRequest request, AppUser user, int orderNo, int stepNo) {
         this.request = request;
         this.user = user;
         this.orderNo = orderNo;
+        this.stepNo = stepNo;
     }
 
     void activate() {
@@ -77,6 +82,7 @@ public class Participant {
     public Long getId() { return id; }
     public AppUser getUser() { return user; }
     public int getOrderNo() { return orderNo; }
+    public int getStepNo() { return stepNo; }
     public SignerStatus getStatus() { return status; }
     public LocalDateTime getSignedAt() { return signedAt; }
     public String getNote() { return note; }

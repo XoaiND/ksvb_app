@@ -1,13 +1,12 @@
-import { UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Descriptions, Flex, Row, Typography, theme } from 'antd';
+import { Card, Col, Descriptions, Flex, Row, Typography } from 'antd';
 import { useSession } from '../../../shared/auth/session';
 import PageHeader from '../../../shared/ui/PageHeader';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
 import { ThemeSegmented } from '../../../shared/ui/ThemeSwitch';
+import SignatureCard from '../components/SignatureCard';
 
 export default function MePage() {
   const { me } = useSession();
-  const { token } = theme.useToken();
   if (!me) return null;
   return (
     <>
@@ -40,28 +39,7 @@ export default function MePage() {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Chữ ký của tôi">
-            <div
-              style={{
-                border: `1px dashed ${token.colorBorder}`,
-                borderRadius: token.borderRadiusLG,
-                padding: 20,
-                textAlign: 'center',
-                marginBottom: 12,
-                fontFamily: 'cursive',
-                fontSize: 24,
-                color: token.colorPrimaryText,
-              }}
-            >
-              {me.fullName}
-            </div>
-            <Button icon={<UploadOutlined />} disabled title="Chưa hỗ trợ">
-              Tải ảnh chữ ký
-            </Button>
-            <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-              Tải ảnh chữ ký và chứng thư số chưa có trong phiên bản này.
-            </Typography.Paragraph>
-          </Card>
+          <SignatureCard hasSignature={me.hasSignature} updatedAt={me.signatureUpdatedAt} />
         </Col>
         <Col span={24}>
           <Card title="Giao diện hiển thị">

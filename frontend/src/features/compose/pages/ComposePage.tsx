@@ -4,6 +4,7 @@ import {
   ArrowLeftOutlined,
   ArrowUpOutlined,
   CloseOutlined,
+  EyeOutlined,
   FileOutlined,
   InboxOutlined,
   PlusOutlined,
@@ -25,31 +26,35 @@ import {
   Row,
   Segmented,
   Select,
+  Spin,
   Steps,
   Tag,
   Typography,
   theme,
 } from 'antd';
 import dayjs from 'dayjs';
-import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { Fragment, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../../../shared/api/http';
-import type { Person, Priority, SaveSignRequestInput, SignMode, Template } from '../../../shared/api/types';
+import type { Person, Priority, SaveSignRequestInput, SignMode, SignSlot, SlotLayout, Template } from '../../../shared/api/types';
 import { useSession } from '../../../shared/auth/session';
 import { fmtDate, fmtSize } from '../../../shared/lib/format';
-import { DOC_TYPES, PRIORITY_LABEL } from '../../documents/lib/constants';
+import { DOC_TYPES, modeLabel, PRIORITY_LABEL } from '../../documents/lib/constants';
 import { ErrorNote, Loading } from '../../../shared/ui/PageState';
 import PageHeader from '../../../shared/ui/PageHeader';
 import { ItemList, ItemRow } from '../../documents/components/ItemList';
 import PersonAvatar from '../../../shared/ui/PersonAvatar';
 import PersonPicker from '../../documents/components/PersonPicker';
 import { documentsApi } from '../../documents/api';
-import { useRefreshDocuments, useSignRequest, useUsers } from '../../documents/hooks';
-import Paper from '../../documents/components/Paper';
+import { useRefreshDocuments, useSignerSignatures, useSignRequest, useUsers } from '../../documents/hooks';
+import SignedPdfView from '../../documents/components/SignedPdfView';
+import FilePreview from '../components/FilePreview';
 import { templatesApi } from '../../templates/api';
+import SlotEditor from '../components/SlotEditor';
+import { checkSlots, slotMessage, type SlotMap } from '../lib/slots';
 import { useTemplates } from '../../templates/hooks';
 
-const STEPS = ['Thông tin & file', 'Người nhận', 'Xem lại & trình ký'];
+const STEPS = ['Thông tin & file', 'Người nhận', 'Vị trí ký', 'Xem lại & trình ký'];
 
 interface FileRow {
   key: string;
@@ -68,6 +73,8 @@ interface FormState {
   description: string;
   mode: SignMode;
   signers: number[];
+  /** Bước ký của từng người (cùng thứ tự signers); song song = cùng bước 1. */
+  steps: number[];
   watchers: number[];
   message: string;
   shared: boolean;
@@ -81,22 +88,56 @@ const EMPTY: FormState = {
   description: '',
   mode: 'SEQ',
   signers: [],
+  steps: [],
   watchers: [],
   message: '',
   shared: false,
 };
 
+/** Bước mặc định: tuần tự = mỗi người một bước, song song = cùng bước 1. */
+const defaultSteps = (mode: SignMode, n: number) => Array.from({ length: n }, (_, i) => (mode === 'SEQ' ? i + 1 : 1));
+/** Đánh lại số bước 1..k liên tục, giữ thứ tự. */
+const normalizeSteps = (steps: number[]) => {
+  const map = new Map<number, number>();
+  return steps.map((g) => {
+    if (!map.has(g)) map.set(g, map.size + 1);
+    return map.get(g)!;
+  });
+};
+
 const ext = (name: string) => name.slice(name.lastIndexOf('.') + 1).toLowerCase();
 const REF_EXT = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'zip', 'rar'];
 
-function FileItem({ f, onRemove }: { f: FileRow; onRemove: () => void }) {
+function FileItem({
+  f,
+  onRemove,
+  viewing,
+  onView,
+}: {
+  f: FileRow;
+  onRemove: () => void;
+  viewing?: boolean;
+  onView?: () => void;
+}) {
   return (
     <ItemRow
       avatar={<FileOutlined />}
       title={f.name}
       description={f.size}
-      extra={f.file ? <Tag color="warning">Chờ tải lên</Tag> : <Tag color="success">Đã tải lên</Tag>}
+      extra={
+        <Flex gap={4} wrap>
+          {viewing && <Tag color="processing">Đang xem</Tag>}
+          {f.file ? <Tag color="warning">Chờ tải lên</Tag> : <Tag color="success">Đã tải lên</Tag>}
+        </Flex>
+      }
       actions={[
+        ...(onView && !viewing
+          ? [
+              <Button key="view" size="small" icon={<EyeOutlined />} onClick={onView}>
+                Xem
+              </Button>,
+            ]
+          : []),
         <Button key="rm" type="text" size="small" aria-label={`Bỏ ${f.name}`} icon={<CloseOutlined />} onClick={onRemove} />,
       ]}
     />
@@ -132,6 +173,7 @@ export default function ComposePage() {
       description: draft.description ?? '',
       mode: draft.mode,
       signers: draft.participants.map((p) => p.userId),
+      steps: draft.participants.map((p) => p.stepNo),
       watchers: draft.watchers.map((w) => w.id),
       message: draft.message ?? '',
       shared: draft.shared,
@@ -144,7 +186,12 @@ export default function ComposePage() {
       attachmentId: a.id,
     }));
   } else if (template) {
-    initial = { ...EMPTY, signers: template.signers.map((s) => s.id), mode: template.mode };
+    initial = {
+      ...EMPTY,
+      signers: template.signers.map((s) => s.id),
+      steps: defaultSteps(template.mode, template.signers.length),
+      mode: template.mode,
+    };
   }
   return (
     <ComposeForm
@@ -202,7 +249,14 @@ function ComposeForm({
   const pendingTemplate = useRef<number | undefined>(templateToUse);
   const uploaded = useRef(new Set<string>());
   const fileIn = useRef<HTMLInputElement>(null);
+  // bước Vị trí ký: bố cục trang + ô ký của từng tệp cần ký (đọc từ annotation trong PDF trên máy chủ)
+  const [layouts, setLayouts] = useState<Record<number, SlotLayout> | null>(null);
+  const [slotMap, setSlotMap] = useState<SlotMap>({});
+  const [signableFiles, setSignableFiles] = useState<{ id: number; name: string }[]>([]);
+  const dirtySlots = useRef(new Set<number>());
   const refIn = useRef<HTMLInputElement>(null);
+  const [viewKey, setViewKey] = useState<string | undefined>(initialFiles.find((f) => f.signable)?.key);
+  const signerSigs = useSignerSignatures(savedId.current ?? 0, step >= 3 && !!layouts);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
   const person = (id: number) => people.find((p) => p.id === id);
@@ -218,6 +272,7 @@ function ComposeForm({
       rows.push({ key: `n${Date.now()}${rows.length}${f.name}`, name: f.name, size: fmtSize(f.size), signable, file: f });
     }
     setFiles((cur) => [...cur, ...rows]);
+    if (signable && rows[0] && !files.some((f) => f.key === viewKey)) setViewKey(rows[0].key);
   };
   const onPick = (signable: boolean) => (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) addFiles(e.target.files, signable);
@@ -232,6 +287,7 @@ function ComposeForm({
     if (f.attachmentId) setRemoved((r) => [...r, f.attachmentId!]);
   };
 
+  /** Đổi chỗ hai người; các bước giữ nguyên vị trí. */
   const move = (i: number, d: number) => {
     const s = [...form.signers];
     const j = i + d;
@@ -239,30 +295,121 @@ function ComposeForm({
     [s[i], s[j]] = [s[j], s[i]];
     set('signers', s);
   };
+  const setSteps = (steps: number[]) => {
+    const st = normalizeSteps(steps);
+    if (form.signers.length > 1 && st.every((x) => x === 1)) {
+      setForm((f) => ({ ...f, mode: 'PAR', steps: st }));
+      message.info('Mọi người đã cùng một bước nên chuyển thành ký Song song.');
+    } else set('steps', st);
+  };
+  /** Người thứ i ký cùng lúc với bước ngay trên. */
+  const joinStep = (i: number) => setSteps(form.steps.map((x, k) => (k === i ? form.steps[i - 1] : x)));
+  /** Tách người thứ i (và những người cùng bước phía sau) ra bước mới. */
+  const splitStep = (i: number) => setSteps(form.steps.map((x, k) => (k >= i ? x + 1 : x)));
+  const setMode = (mode: SignMode) => setForm((f) => ({ ...f, mode, steps: defaultSteps(mode, f.signers.length) }));
+  const removeSigner = (i: number) =>
+    setForm((f) => ({
+      ...f,
+      signers: f.signers.filter((_, k) => k !== i),
+      steps: normalizeSteps(f.steps.filter((_, k) => k !== i)),
+    }));
+  const addSigners = (ids: number[]) =>
+    setForm((f) => {
+      const last = f.steps.length ? Math.max(...f.steps) : 0;
+      return {
+        ...f,
+        signers: [...f.signers, ...ids],
+        steps: [...f.steps, ...ids.map((_, k) => (f.mode === 'SEQ' ? last + k + 1 : 1))],
+      };
+    });
 
   const applyTemplate = (id: number) => {
     const t = templates.find((x) => x.id === id);
     if (!t) return;
-    setForm((f) => ({ ...f, signers: t.signers.map((s) => s.id), mode: t.mode }));
+    setForm((f) => ({
+      ...f,
+      signers: t.signers.map((s) => s.id),
+      steps: defaultSteps(t.mode, t.signers.length),
+      mode: t.mode,
+    }));
     templatesApi.use(t.id).catch(() => undefined);
     message.success(`Đã áp dụng mẫu "${t.name}"`);
   };
 
   const signableCount = files.filter((f) => f.signable).length;
+  const viewFile = files.find((f) => f.signable && f.key === viewKey) ?? files.find((f) => f.signable);
 
   const goto = (s: number) => {
     setStep(s);
     window.scrollTo(0, 0);
   };
-  const next = () => {
+  const next = async () => {
     if (step === 1 && (!form.title.trim() || signableCount === 0))
       return void message.error('Cần nhập tiêu đề và chọn ít nhất 1 tệp PDF cần ký');
     if (step === 2 && form.signers.length === 0) return setError('Cần ít nhất một người ký.');
+    if (step === 3) {
+      const c = checkSlots(slotMap, form.signers.length);
+      if (!c.ok) return setError(slotMessage(c, form.signers.length));
+    }
     setError('');
+    if (step === 2) return enterSlots();
+    if (step === 3) {
+      setBusy(true);
+      try {
+        await saveSlots(savedId.current!);
+      } catch (e) {
+        return fail(e);
+      } finally {
+        setBusy(false);
+      }
+    }
     goto(step + 1);
   };
 
+  /** Sang bước Vị trí ký: lưu nháp (tải tệp lên) rồi đọc ô ký + kích thước trang của từng tệp cần ký. */
+  const enterSlots = async () => {
+    setBusy(true);
+    try {
+      const id = await persist();
+      const list = attachedRef.current.filter((a) => a.signable);
+      const loaded = await Promise.all(list.map((a) => documentsApi.slots(id, a.id)));
+      const ls: Record<number, SlotLayout> = {};
+      const map: SlotMap = {};
+      list.forEach((a, i) => {
+        ls[a.id] = loaded[i];
+        map[a.id] = loaded[i].slots;
+      });
+      dirtySlots.current.clear();
+      setSignableFiles(list.map((a) => ({ id: a.id, name: a.name })));
+      setLayouts(ls);
+      setSlotMap(map);
+      refresh();
+      goto(3);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeSlots = (attachmentId: number, list: SignSlot[]) => {
+    dirtySlots.current.add(attachmentId);
+    setSlotMap((m) => ({ ...m, [attachmentId]: list }));
+  };
+
+  /** Ghi ô ký đã sửa vào PDF trên máy chủ (chỉ các tệp có thay đổi). */
+  const saveSlots = async (id: number) => {
+    for (const aid of [...dirtySlots.current]) {
+      if (!layouts?.[aid]) continue;
+      await documentsApi.saveSlots(id, aid, slotMap[aid] ?? []);
+      dirtySlots.current.delete(aid);
+    }
+  };
+
   /** Lưu nháp lên máy chủ (tạo mới hoặc cập nhật), xoá tệp đã bỏ, tải tệp mới. Trả về id văn bản. */
+  /** Tệp đã có trên máy chủ sau lần lưu gần nhất (id, tên, cần ký). */
+  const attachedRef = useRef<{ id: number; name: string; signable: boolean }[]>([]);
+
   const persist = async (): Promise<number> => {
     const body: SaveSignRequestInput = {
       title: form.title.trim(),
@@ -274,6 +421,7 @@ function ComposeForm({
       message: form.message || undefined,
       shared: form.shared,
       signerIds: form.signers,
+      signerSteps: form.mode === 'SEQ' ? form.steps : undefined,
       watcherIds: form.watchers,
     };
     const saved = savedId.current
@@ -287,11 +435,17 @@ function ComposeForm({
     } // lần lưu sau (khi lỗi giữa chừng) không tạo trùng bản nháp
     for (const aid of removed) await documentsApi.removeAttachment(saved.id, aid);
     setRemoved([]);
+    const attached = files
+      .filter((x) => x.attachmentId)
+      .map((x) => ({ id: x.attachmentId!, name: x.name, signable: x.signable }));
     for (const f of files.filter((x) => x.file && !uploaded.current.has(x.key))) {
       const a = await documentsApi.uploadAttachment(saved.id, f.file!, f.signable);
       uploaded.current.add(f.key); // không tải lại nếu bước sau lỗi rồi bấm lưu lần nữa
+      attached.push({ id: a.id, name: a.name, signable: a.signable });
       setFiles((cur) => cur.map((x) => (x.key === f.key ? { ...x, file: undefined, attachmentId: a.id } : x)));
     }
+    attachedRef.current = attached;
+    if (layouts) await saveSlots(saved.id);
     return saved.id;
   };
 
@@ -334,6 +488,84 @@ function ComposeForm({
     }
   };
 
+  /** Người ký nhóm theo bước (chỉ số trong danh sách), theo thứ tự bước. */
+  const stepGroups = [...new Set(form.steps)].map((step) => ({
+    step,
+    idx: form.signers.map((_, i) => i).filter((i) => form.steps[i] === step),
+  }));
+
+  const signerRow = (i: number) => {
+    const id = form.signers[i];
+    const p = person(id);
+    const name = p?.fullName ?? `#${id}`;
+    const seq = form.mode === 'SEQ';
+    const sameAsPrev = i > 0 && form.steps[i - 1] === form.steps[i];
+    return (
+      <ItemRow
+        avatar={
+          <Flex align="center" gap={8}>
+            <Typography.Text strong style={{ width: 16 }} title="Số ô ký">
+              {i + 1}
+            </Typography.Text>
+            <PersonAvatar id={id} name={name} />
+          </Flex>
+        }
+        title={name}
+        description={[p?.jobTitle, p?.unitName].filter(Boolean).join(' · ')}
+        extra={p && !p.hasSignature && <Tag color="warning">Chưa có chữ ký</Tag>}
+        actions={[
+          ...(seq && i > 0
+            ? [
+                sameAsPrev ? (
+                  <Button
+                    key="split"
+                    size="small"
+                    onClick={() => splitStep(i)}
+                    title="Tách ra bước riêng, ký sau những người phía trên"
+                  >
+                    ⇣ Tách bước
+                  </Button>
+                ) : (
+                  <Button key="join" size="small" onClick={() => joinStep(i)} title={`Ký cùng lúc với bước ${form.steps[i] - 1}`}>
+                    ⇡ Ký cùng bước trên
+                  </Button>
+                ),
+              ]
+            : []),
+          ...(seq
+            ? [
+                <Button
+                  key="up"
+                  size="small"
+                  aria-label="Lên"
+                  icon={<ArrowUpOutlined />}
+                  disabled={i === 0}
+                  onClick={() => move(i, -1)}
+                />,
+                <Button
+                  key="down"
+                  size="small"
+                  aria-label="Xuống"
+                  icon={<ArrowDownOutlined />}
+                  disabled={i === form.signers.length - 1}
+                  onClick={() => move(i, 1)}
+                />,
+              ]
+            : []),
+          <Button
+            key="rm"
+            size="small"
+            danger
+            aria-label={`Bỏ ${name}`}
+            icon={<CloseOutlined />}
+            onClick={() => removeSigner(i)}
+          />,
+        ]}
+      />
+    );
+  };
+
+  const noSignature = form.signers.filter((id) => person(id) && !person(id)!.hasSignature);
   const names = (ids: number[], sep: string) => ids.map((id) => person(id)?.fullName ?? `#${id}`).join(sep) || '—';
   const errorBox = error && <Alert type="error" showIcon title={error} style={{ marginTop: 12 }} />;
 
@@ -344,7 +576,7 @@ function ComposeForm({
 
       {step === 1 && (
         <Row gutter={[16, 16]}>
-          <Col xs={24} xl={16}>
+          <Col xs={24} xl={10}>
             <Card>
               <Form layout="vertical">
                 <Form.Item label="Tiêu đề" htmlFor="c-title" required>
@@ -435,7 +667,14 @@ function ComposeForm({
                   <ItemList
                     items={files.filter((f) => f.signable)}
                     rowKey={(f) => f.key}
-                    render={(f) => <FileItem f={f} onRemove={() => removeFile(f)} />}
+                    render={(f) => (
+                      <FileItem
+                        f={f}
+                        onRemove={() => removeFile(f)}
+                        viewing={f.key === viewFile?.key}
+                        onView={() => setViewKey(f.key)}
+                      />
+                    )}
                   />
                 </Form.Item>
                 <Form.Item label="File tham khảo (không ký)">
@@ -457,16 +696,14 @@ function ComposeForm({
                   </Button>
                 </Form.Item>
               </Form>
+              <Typography.Text type="secondary">
+                Chỉ file PDF được ký. Sau khi trình ký, nội dung file không thể sửa; nếu cần sửa hãy thu hồi về nháp.
+              </Typography.Text>
               {errorBox}
             </Card>
           </Col>
-          <Col xs={24} xl={8}>
-            <Card title="Gợi ý">
-              <Typography.Paragraph type="secondary">
-                Chỉ file PDF được ký. Sau khi trình ký, nội dung file không thể sửa; nếu cần sửa hãy thu hồi về nháp.
-              </Typography.Paragraph>
-              <Paper title={form.title || 'Tiêu đề'} code="Dự thảo" participants={[]} signMode={false} />
-            </Card>
+          <Col xs={24} xl={14}>
+            <FilePreview file={viewFile} requestId={savedId.current} />
           </Col>
         </Row>
       )}
@@ -497,13 +734,13 @@ function ComposeForm({
                   label="Cách ký"
                   extra={
                     form.mode === 'SEQ'
-                      ? 'Người ký lần lượt theo thứ tự bên dưới, người sau chỉ ký khi người trước đã ký.'
-                      : 'Tất cả người ký nhận được yêu cầu cùng lúc.'
+                      ? 'Ký lần lượt từng bước: bước trên ký xong hết thì bước dưới mới nhận yêu cầu. Bấm "Ký cùng bước trên" để nhiều người ký cùng lúc trong một bước.'
+                      : 'Tất cả người ký nhận yêu cầu cùng lúc.'
                   }
                 >
                   <Segmented<SignMode>
                     value={form.mode}
-                    onChange={(v) => set('mode', v)}
+                    onChange={setMode}
                     options={[
                       { value: 'SEQ', label: 'Tuần tự' },
                       { value: 'PAR', label: 'Song song' },
@@ -514,63 +751,42 @@ function ComposeForm({
               {form.signers.length === 0 ? (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={'Chưa có người ký. Bấm "Thêm người ký".'} />
               ) : (
-                <ItemList
-                  items={form.signers}
-                  rowKey={(id) => id}
-                  render={(id, i) => {
-                    const p = person(id);
-                    const name = p?.fullName ?? `#${id}`;
-                    return (
-                      <ItemRow
-                        avatar={
-                          <Flex align="center" gap={8}>
-                            <Typography.Text strong style={{ width: 16 }}>
-                              {form.mode === 'SEQ' ? i + 1 : '•'}
+                <Flex vertical gap={6}>
+                  {stepGroups.map((g, gi) => (
+                    <Fragment key={g.step}>
+                      {gi > 0 && (
+                        <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: 12 }}>
+                          ▼ bước {g.step - 1} ký xong thì chuyển bước {g.step}
+                        </Typography.Text>
+                      )}
+                      <div
+                        data-testid={`step-${g.step}`}
+                        style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG }}
+                      >
+                        <Flex
+                          align="center"
+                          gap={6}
+                          style={{
+                            padding: '6px 12px',
+                            background: token.colorFillQuaternary,
+                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0`,
+                          }}
+                        >
+                          <Typography.Text strong>{form.mode === 'SEQ' ? `Bước ${g.step}` : 'Ký cùng lúc'}</Typography.Text>
+                          {(form.mode === 'PAR' || g.idx.length > 1) && (
+                            <Typography.Text type="secondary">
+                              · {g.idx.length} người{form.mode === 'SEQ' ? ' ký cùng lúc' : ''}
                             </Typography.Text>
-                            <PersonAvatar id={id} name={name} />
-                          </Flex>
-                        }
-                        title={name}
-                        description={[p?.jobTitle, p?.unitName].filter(Boolean).join(' · ')}
-                        actions={[
-                          ...(form.mode === 'SEQ'
-                            ? [
-                                <Button
-                                  key="up"
-                                  size="small"
-                                  aria-label="Lên"
-                                  icon={<ArrowUpOutlined />}
-                                  disabled={i === 0}
-                                  onClick={() => move(i, -1)}
-                                />,
-                                <Button
-                                  key="down"
-                                  size="small"
-                                  aria-label="Xuống"
-                                  icon={<ArrowDownOutlined />}
-                                  disabled={i === form.signers.length - 1}
-                                  onClick={() => move(i, 1)}
-                                />,
-                              ]
-                            : []),
-                          <Button
-                            key="rm"
-                            size="small"
-                            danger
-                            aria-label={`Bỏ ${name}`}
-                            icon={<CloseOutlined />}
-                            onClick={() =>
-                              set(
-                                'signers',
-                                form.signers.filter((x) => x !== id),
-                              )
-                            }
-                          />,
-                        ]}
-                      />
-                    );
-                  }}
-                />
+                          )}
+                        </Flex>
+                        <div style={{ padding: '0 12px' }}>
+                          <ItemList items={g.idx} rowKey={(i) => form.signers[i]} render={(i) => signerRow(i)} />
+                        </div>
+                      </div>
+                    </Fragment>
+                  ))}
+                </Flex>
               )}
               {errorBox}
             </Card>
@@ -620,9 +836,29 @@ function ComposeForm({
         </Row>
       )}
 
-      {step === 3 && (
+      {step === 3 && savedId.current && layouts && (
+        <>
+          <SlotEditor
+            requestId={savedId.current}
+            files={signableFiles}
+            layouts={layouts}
+            value={slotMap}
+            onChange={changeSlots}
+            signers={form.signers.map((id, i) => ({
+              id,
+              fullName: person(id)?.fullName ?? `#${id}`,
+              jobTitle: person(id)?.jobTitle,
+              step: form.mode === 'SEQ' ? form.steps[i] : undefined,
+            }))}
+            signatures={signerSigs}
+          />
+          {errorBox}
+        </>
+      )}
+
+      {step === 4 && (
         <Row gutter={[16, 16]}>
-          <Col xs={24} xl={12}>
+          <Col xs={24} xl={10}>
             <Card title="Xem lại thông tin">
               <Descriptions
                 column={1}
@@ -641,27 +877,60 @@ function ComposeForm({
                         .map((f) => f.name)
                         .join(', ') || '—',
                   },
-                  { key: 'm', label: 'Cách ký', children: form.mode === 'SEQ' ? 'Tuần tự' : 'Song song' },
-                  { key: 's', label: 'Luồng ký', children: names(form.signers, form.mode === 'SEQ' ? ' → ' : ', ') },
+                  { key: 'm', label: 'Cách ký', children: modeLabel(form.mode, form.steps) },
+                  {
+                    key: 's',
+                    label: 'Luồng ký',
+                    children:
+                      form.mode === 'PAR' ? (
+                        names(form.signers, ', ')
+                      ) : stepGroups.length < form.signers.length ? (
+                        <Flex vertical gap={2}>
+                          {stepGroups.map((g) => (
+                            <div key={g.step}>
+                              <Tag>Bước {g.step}</Tag>
+                              {names(
+                                g.idx.map((i) => form.signers[i]),
+                                ', ',
+                              )}
+                            </div>
+                          ))}
+                        </Flex>
+                      ) : (
+                        names(form.signers, ' → ')
+                      ),
+                  },
                   { key: 'w', label: 'Theo dõi', children: names(form.watchers, ', ') },
                 ]}
               />
+              {noSignature.length > 0 && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginTop: 12 }}
+                  title={`${names(noSignature, ', ')} chưa có ảnh chữ ký.`}
+                  description="Vẫn trình ký được, nhưng người đó phải tải ảnh chữ ký lên trước khi ký."
+                />
+              )}
               {errorBox}
             </Card>
           </Col>
-          <Col xs={24} xl={12}>
-            <Card title="Xem trước sơ đồ chữ ký">
-              <Paper
-                title={form.title}
-                code="Dự thảo"
-                signMode={false}
-                participants={form.signers.map((id) => ({
-                  userId: id,
-                  fullName: person(id)?.fullName ?? `#${id}`,
-                  jobTitle: person(id)?.jobTitle,
-                  status: 'WAITING' as const,
-                }))}
-              />
+          <Col xs={24} xl={14}>
+            <Card title="Xem trước bản ký" extra={<Typography.Text type="secondary">chữ ký mờ = xem thử</Typography.Text>}>
+              {savedId.current && layouts ? (
+                <SignedPdfView
+                  requestId={savedId.current}
+                  files={signableFiles}
+                  layouts={signableFiles.map((f) => layouts[f.id] && { pages: layouts[f.id].pages, slots: slotMap[f.id] ?? [] })}
+                  nameOf={(k) => (k <= form.signers.length ? (person(form.signers[k - 1])?.fullName ?? `#${k}`) : `Ô ${k}`)}
+                  preview={Object.fromEntries(
+                    form.signers.map((id, i) => [i + 1, signerSigs ? (signerSigs[id] ?? null) : undefined]),
+                  )}
+                  maxHeight="70vh"
+                />
+              ) : (
+                <Spin />
+              )}
             </Card>
           </Col>
         </Row>
@@ -672,8 +941,16 @@ function ComposeForm({
           {step > 1 && (
             <Button
               icon={<ArrowLeftOutlined />}
-              onClick={() => {
+              disabled={busy}
+              onClick={async () => {
                 setError('');
+                if (step === 3 && savedId.current) {
+                  try {
+                    await saveSlots(savedId.current);
+                  } catch (e) {
+                    return fail(e);
+                  }
+                }
                 goto(step - 1);
               }}
             >
@@ -685,8 +962,8 @@ function ComposeForm({
           <Button disabled={busy || !form.title.trim() || form.signers.length === 0} onClick={saveDraft}>
             Lưu nháp
           </Button>
-          {step < 3 ? (
-            <Button type="primary" onClick={next}>
+          {step < 4 ? (
+            <Button type="primary" loading={busy} onClick={() => void next()}>
               Tiếp theo →
             </Button>
           ) : (
@@ -704,7 +981,7 @@ function ComposeForm({
           exclude={picker === 'signers' ? form.signers : form.watchers}
           onClose={() => setPicker(null)}
           onPick={(ids) => {
-            if (picker === 'signers') set('signers', [...form.signers, ...ids]);
+            if (picker === 'signers') addSigners(ids);
             else set('watchers', [...form.watchers, ...ids]);
             setPicker(null);
           }}
@@ -721,7 +998,7 @@ function ComposeForm({
         destroyOnHidden
       >
         <p>
-          Trình ký <b>{form.title}</b> cho {form.signers.length} người ký ({form.mode === 'SEQ' ? 'tuần tự' : 'song song'})?
+          Trình ký <b>{form.title}</b> cho {form.signers.length} người ký ({modeLabel(form.mode, form.steps).toLowerCase()})?
         </p>
         <Typography.Text type="secondary">Sau khi trình ký bạn không sửa được nội dung file.</Typography.Text>
       </Modal>

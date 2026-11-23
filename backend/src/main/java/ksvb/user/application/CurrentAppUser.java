@@ -54,7 +54,7 @@ public class CurrentAppUser {
         }
         return provisioning.findOrCreate(new UserProvisioningService.Claims(
                 email,
-                firstText(jwt.getClaimAsString("name"), jwt.getClaimAsString("preferred_username")),
+                fullName(jwt),
                 jwt.getClaimAsString("employee_code"),
                 firstText(jwt.getClaimAsString("unit_name"), jwt.getClaimAsString("unit_code")),
                 firstText(jwt.getClaimAsString("position_name"), jwt.getClaimAsString("position_code"))));
@@ -66,6 +66,22 @@ public class CurrentAppUser {
         }
         return users.findByEmailIgnoreCase(auth.getName())
                 .orElseThrow(() -> new AccessDeniedException("Không tìm thấy người dùng " + auth.getName()));
+    }
+
+    /**
+     * Họ tên theo thứ tự Việt (họ đệm + tên). Claim {@code name} do Keycloak ghép {@code firstName + lastName}
+     * (thứ tự phương Tây) nên bị ngược với HRM (firstName = tên, lastName = họ đệm); vì vậy ưu tiên
+     * {@code family_name + " " + given_name}, thiếu thì mới dùng {@code name}, rồi {@code preferred_username}.
+     */
+    static String fullName(Jwt jwt) {
+        String family = jwt.getClaimAsString("family_name");
+        String given = jwt.getClaimAsString("given_name");
+        boolean hasFamily = family != null && !family.isBlank();
+        boolean hasGiven = given != null && !given.isBlank();
+        if (hasFamily && hasGiven) {
+            return family.trim() + " " + given.trim();
+        }
+        return firstText(jwt.getClaimAsString("name"), jwt.getClaimAsString("preferred_username"));
     }
 
     private static String firstText(String a, String b) {

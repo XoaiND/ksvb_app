@@ -26,6 +26,7 @@ import java.util.Set;
 import ksvb.shared.audit.Auditable;
 import ksvb.shared.error.BusinessException;
 import ksvb.shared.error.ConflictException;
+import ksvb.shared.error.NotFoundException;
 import ksvb.shared.security.Permissions;
 import ksvb.user.domain.AppUser;
 
@@ -131,17 +132,49 @@ public class SignRequest extends Auditable {
         this.shared = shared;
     }
 
-    /** Thay toàn bộ luồng ký theo đúng thứ tự truyền vào. */
+    /** Thay toàn bộ luồng ký theo đúng thứ tự truyền vào; tuần tự = mỗi người một bước, song song = cùng bước 1. */
     public void replaceSigners(List<AppUser> signers) {
+        replaceSigners(signers, null);
+    }
+
+    /**
+     * Thay toàn bộ luồng ký. {@code steps} (tuỳ chọn, cùng độ dài) là bước ký của từng người: bắt đầu từ 1, mỗi người
+     * cùng bước với người trước hoặc sang bước kế tiếp. Ký song song luôn là một bước; tuần tự mà mọi người cùng một
+     * bước thì chính là song song nên đổi sang {@link SignMode#PAR}.
+     */
+    public void replaceSigners(List<AppUser> signers, List<Integer> steps) {
         requireStatus(DocStatus.DRAFT, "Chỉ sửa được luồng ký khi văn bản là bản nháp");
         if (signers.stream().map(AppUser::getId).distinct().count() != signers.size()) {
             throw new BusinessException("DUPLICATE_SIGNER", "Một người không được xuất hiện hai lần trong luồng ký");
         }
+        List<Integer> s = resolveSteps(signers.size(), steps);
         participants.clear();
-        int order = 1;
-        for (AppUser u : signers) {
-            participants.add(new Participant(this, u, order++));
+        for (int i = 0; i < signers.size(); i++) {
+            participants.add(new Participant(this, signers.get(i), i + 1, s.get(i)));
         }
+        if (mode == SignMode.SEQ && signers.size() > 1 && s.get(s.size() - 1) == 1) {
+            this.mode = SignMode.PAR;
+        }
+    }
+
+    private List<Integer> resolveSteps(int n, List<Integer> steps) {
+        List<Integer> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            out.add(mode == SignMode.PAR ? 1 : steps == null ? i + 1 : steps.get(Math.min(i, steps.size() - 1)));
+        }
+        if (mode == SignMode.PAR || steps == null) {
+            return out;
+        }
+        boolean ok = steps.size() == n && (n == 0 || out.get(0) == 1);
+        for (int i = 1; ok && i < n; i++) {
+            int d = out.get(i) - out.get(i - 1);
+            ok = d == 0 || d == 1;
+        }
+        if (!ok) {
+            throw new BusinessException("INVALID_STEPS",
+                    "Bước ký không hợp lệ: bắt đầu từ bước 1, mỗi người cùng bước với người trước hoặc sang bước kế tiếp");
+        }
+        return out;
     }
 
     public void replaceWatchers(Set<Long> userIds) {
@@ -161,6 +194,16 @@ public class SignRequest extends Auditable {
         attachments.removeIf(a -> Objects.equals(a.getId(), attachmentId));
     }
 
+    /** Thay nội dung tệp cần ký (vd. sau khi ghi lại ô ký); chỉ khi bản nháp. Trả về tên tệp cũ. */
+    public String replaceAttachmentFile(Long attachmentId, String storedName, long sizeBytes) {
+        requireStatus(DocStatus.DRAFT, "Chỉ sửa được tệp khi văn bản là bản nháp");
+        Attachment a = attachments.stream().filter(x -> Objects.equals(x.getId(), attachmentId)).findFirst()
+                .orElseThrow(() -> new NotFoundException("Tệp đính kèm", attachmentId));
+        String old = a.getStoredName();
+        a.replaceFile(storedName, sizeBytes);
+        return old;
+    }
+
     // ------------------------------------------------------------------ luồng ký
 
     /** Trình ký: DRAFT → PENDING, kích hoạt người ký đầu tiên (hoặc tất cả nếu ký song song). */
@@ -178,11 +221,16 @@ public class SignRequest extends Auditable {
         this.submittedAt = now;
         this.completedAt = null;
         participants.forEach(Participant::reset);
-        if (mode == SignMode.PAR) {
-            participants.forEach(Participant::activate);
-        } else {
-            participants.get(0).activate();
-        }
+        activateNextStep();
+    }
+
+    /** Mở bước ký nhỏ nhất còn người chờ: mọi người trong bước đó cùng nhận yêu cầu. */
+    private void activateNextStep() {
+        participants.stream().filter(x -> x.getStatus() == SignerStatus.WAITING)
+                .mapToInt(Participant::getStepNo).min()
+                .ifPresent(step -> participants.stream()
+                        .filter(x -> x.getStatus() == SignerStatus.WAITING && x.getStepNo() == step)
+                        .forEach(Participant::activate));
     }
 
     public void sign(Long userId, String note, LocalDateTime now) {
@@ -199,9 +247,8 @@ public class SignRequest extends Auditable {
         if (participants.stream().allMatch(x -> x.getStatus() == SignerStatus.SIGNED)) {
             this.status = DocStatus.COMPLETED;
             this.completedAt = now;
-        } else if (mode == SignMode.SEQ) {
-            participants.stream().filter(x -> x.getStatus() == SignerStatus.WAITING).findFirst()
-                    .ifPresent(Participant::activate);
+        } else if (participants.stream().noneMatch(x -> x.getStatus() == SignerStatus.PENDING)) {
+            activateNextStep(); // cả bước hiện tại đã ký xong → mở bước sau
         }
     }
 

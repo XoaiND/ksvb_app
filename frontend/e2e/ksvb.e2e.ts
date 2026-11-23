@@ -23,12 +23,17 @@ test('soạn → tải PDF → chọn người ký → trình ký', async ({ pag
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4 e2e'),
   });
-  await page.getByRole('button', { name: 'Tiếp theo →' }).click();
+  await page.getByRole('button', { name: /Tiếp theo/ }).click();
 
   await page.getByRole('button', { name: /Thêm người ký/ }).click();
   await page.getByRole('dialog').getByText('Nguyễn Văn An').click();
   await page.getByRole('button', { name: 'Thêm đã chọn' }).click();
-  await page.getByRole('button', { name: 'Tiếp theo →' }).click();
+  await page.getByRole('button', { name: /Tiếp theo/ }).click();
+
+  // bước Vị trí ký: PDF mẫu có sẵn ô số 1, đủ cho 1 người ký
+  await expect(page.getByText('Đủ ô cho 1 người ký.')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Trang 2' })).toBeVisible();
+  await page.getByRole('button', { name: /Tiếp theo/ }).click();
 
   await page.getByRole('button', { name: /Trình ký$/ }).click();
   await page
@@ -41,8 +46,10 @@ test('soạn → tải PDF → chọn người ký → trình ký', async ({ pag
   await expect(page.getByText('Đang xử lý').first()).toBeVisible();
 });
 
-test('ký văn bản: phải xác nhận đã đọc', async ({ page }) => {
+test('ký văn bản: phải xác nhận đã đọc, chữ ký được đóng vào PDF', async ({ page }) => {
   await page.goto('/documents/101/sign');
+  // ô của tôi (người ký thứ 1) được làm nổi trên trang PDF, kèm chữ ký xem trước
+  await expect(page.getByRole('note', { name: 'Chữ ký của bạn sẽ ở đây' })).toBeVisible();
   await page.getByRole('button', { name: /Ký văn bản/ }).click();
   await page
     .getByRole('dialog')
@@ -55,7 +62,9 @@ test('ký văn bản: phải xác nhận đã đọc', async ({ page }) => {
     .getByRole('dialog')
     .getByRole('button', { name: /Xác nhận ký/ })
     .click();
-  await expect(page.getByText('Đã ký văn bản thành công')).toBeVisible();
+  await expect(page.getByText('Đã ký. Chữ ký đã được đóng vào PDF.')).toBeVisible();
+  await expect(page.getByRole('note', { name: 'Chữ ký của bạn sẽ ở đây' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Bản đã ký/ })).toBeVisible();
 });
 
 test('từ chối ký bắt buộc nhập lý do', async ({ page }) => {
