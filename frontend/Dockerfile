@@ -1,5 +1,5 @@
 # Build nhiều tầng; nginx chạy bằng user không phải root (nginx-unprivileged, uid 101), có HEALTHCHECK.
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /src
 COPY package*.json ./
 RUN npm ci
