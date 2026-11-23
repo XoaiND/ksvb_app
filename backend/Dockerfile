@@ -1,5 +1,5 @@
 # Build nhiều tầng; chạy bằng user không phải root, có HEALTHCHECK; cấu hình chỉ qua biến môi trường (KSVB_*).
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 WORKDIR /src
 COPY pom.xml .
 RUN mvn -q -B dependency:go-offline
